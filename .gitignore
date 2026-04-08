@@ -1,0 +1,7 @@
+.env
+.env.local
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+ml-service/app/trained_models/*.pkl
