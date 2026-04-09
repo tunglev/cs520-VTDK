@@ -6,7 +6,11 @@ import { LISTINGS, PRICE_DISTRIBUTION } from '../data/mockData';
 import { PriceChart } from '../components/PriceChart';
 import { ListingCard } from '../components/ListingCard';
 
-export const HomePage = () => {
+interface HomePageProps {
+  onSelectListing: (listing: typeof LISTINGS[0]) => void;
+}
+
+export const HomePage = ({ onSelectListing }: HomePageProps) => {
   const [search, setSearch] = useState('');
   const [activeRange, setActiveRange] = useState<string | null>(null);
 
@@ -90,7 +94,7 @@ export const HomePage = () => {
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.2 }}
               >
-                <ListingCard listing={listing} />
+                <ListingCard listing={listing} onSelect={onSelectListing} />
               </motion.div>
             ))}
           </AnimatePresence>
