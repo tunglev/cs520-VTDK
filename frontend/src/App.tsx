@@ -25,9 +25,12 @@ const PRICE_DISTRIBUTION = [
 
 // --- Components ---
 
-const Navbar = () => (
+const Navbar = ({ onLoginClick, onHomeClick }: { onLoginClick: () => void, onHomeClick: () => void }) => (
   <nav className="flex justify-between items-center px-8 py-6 border-b-4 border-black bg-white">
-    <div className="text-3xl font-display uppercase tracking-tighter flex items-center gap-2">
+    <div 
+      className="text-3xl font-display uppercase tracking-tighter flex items-center gap-2 cursor-pointer"
+      onClick={onHomeClick}
+    >
       <div className="w-8 h-8 bg-vibrant-coral border-2 border-black rounded-sm" />
       VTDK
     </div>
@@ -36,7 +39,10 @@ const Navbar = () => (
       <a href="#" className="hover:text-vibrant-coral transition-colors">How it works</a>
       <a href="#" className="hover:text-vibrant-coral transition-colors">Pricing</a>
     </div>
-    <button className="px-6 py-2 bg-shadow-grey text-white font-display uppercase text-sm border-2 border-black shadow-brutal-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
+    <button 
+      onClick={onLoginClick}
+      className="px-6 py-2 bg-shadow-grey text-white font-display uppercase text-sm border-2 border-black shadow-brutal-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
+    >
       Login
     </button>
   </nav>
@@ -131,9 +137,71 @@ const ListingCard = ({ listing }: { listing: typeof LISTINGS[0] }) => (
   </div>
 );
 
+const AuthPage = () => {
+  const [isLogin, setIsLogin] = useState(true);
+
+  return (
+    <div className="flex-1 flex max-w-7xl mx-auto w-full items-center justify-center p-8 mt-12 mb-24">
+      <div className="w-full max-w-md bg-white border-4 border-black p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
+        <h2 className="text-4xl font-display uppercase tracking-tighter mb-2">
+          {isLogin ? 'Welcome Back' : 'Join VTDK'}
+        </h2>
+        <p className="font-mono text-xs uppercase opacity-60 mb-8">
+          {isLogin ? 'Enter your details to access your account' : 'Create an account to hire or work'}
+        </p>
+
+        <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+          {!isLogin && (
+            <div className="space-y-2">
+              <label className="font-display uppercase text-[10px] tracking-widest block">Full Name</label>
+              <input 
+                type="text" 
+                className="w-full p-4 border-2 border-black bg-white focus:outline-none focus:border-vibrant-coral transition-colors font-mono text-sm"
+                placeholder="JOHN DOE"
+              />
+            </div>
+          )}
+          <div className="space-y-2">
+            <label className="font-display uppercase text-[10px] tracking-widest block">Email</label>
+            <input 
+              type="email" 
+              className="w-full p-4 border-2 border-black bg-white focus:outline-none focus:border-vibrant-coral transition-colors font-mono text-sm"
+              placeholder="HELLO@EXAMPLE.COM"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="font-display uppercase text-[10px] tracking-widest block">Password</label>
+            <input 
+              type="password" 
+              className="w-full p-4 border-2 border-black bg-white focus:outline-none focus:border-vibrant-coral transition-colors font-mono text-sm"
+              placeholder="••••••••"
+            />
+          </div>
+
+          <div className="pt-2">
+            <button className="w-full py-4 bg-vibrant-coral text-white font-display uppercase border-2 border-black shadow-brutal-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
+              {isLogin ? 'Sign In' : 'Create Account'}
+            </button>
+          </div>
+        </form>
+
+        <div className="mt-8 pt-6 border-t-2 border-dashed border-black/20 text-center">
+          <button 
+            onClick={() => setIsLogin(!isLogin)}
+            className="font-mono text-xs uppercase hover:text-vibrant-coral transition-colors underline decoration-2 underline-offset-4"
+          >
+            {isLogin ? "Don't have an account? Sign up" : "Already have an account? Log in"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
   const [search, setSearch] = useState('');
   const [activeRange, setActiveRange] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<'home' | 'auth'>('home');
 
   const filteredListings = useMemo(() => {
     return LISTINGS.filter(l => 
@@ -145,9 +213,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col selection:bg-vibrant-coral selection:text-white">
-      <Navbar />
+      <Navbar onLoginClick={() => setCurrentPage('auth')} onHomeClick={() => setCurrentPage('home')} />
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-8 py-20">
+      {currentPage === 'auth' ? (
+        <AuthPage />
+      ) : (
+        <main className="flex-1 max-w-7xl mx-auto w-full px-8 py-20">
         {/* Hero Section */}
         <div className="max-w-4xl mb-20">
           <motion.h1 
@@ -231,6 +302,7 @@ export default function App() {
           )}
         </div>
       </main>
+      )}
 
       <footer className="mt-40 border-t-4 border-black bg-white p-12">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
