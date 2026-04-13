@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 import { FREELANCER_PROFILES, getPricingReport } from '../data/mockData';
 import { LISTINGS } from '../data/mockData';
+import { PricingReportModal } from '../components/PricingReportModal';
 
 interface FreelancerProfileProps {
   listing: typeof LISTINGS[0];
@@ -192,28 +193,12 @@ export const FreelancerProfile = ({ listing, onBack }: FreelancerProfileProps) =
         </div>
       </motion.div>
 
-      {/* Pricing report modal — rendered here, wired up in Issue #5 */}
       {reportOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 z-40 flex items-center justify-center"
-          onClick={() => setReportOpen(false)}
-        >
-          <div
-            className="bg-bone border-4 border-black shadow-brutal p-8 max-w-sm w-full mx-4"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="font-display uppercase text-xl tracking-tighter mb-2">Coming Soon</div>
-            <p className="font-mono text-xs uppercase opacity-60 mb-6">
-              Full pricing report with market comparator charts — Issue #5.
-            </p>
-            <button
-              onClick={() => setReportOpen(false)}
-              className="w-full py-3 bg-shadow-grey text-white font-display uppercase text-sm border-2 border-black"
-            >
-              Close
-            </button>
-          </div>
-        </div>
+        <PricingReportModal
+          report={report}
+          listing={listing}
+          onClose={() => setReportOpen(false)}
+        />
       )}
     </main>
   );
