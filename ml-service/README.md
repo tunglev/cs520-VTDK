@@ -106,5 +106,5 @@ Railway detects the `Dockerfile` automatically.
 ## Testing
 
 ```bash
-pytest tests/
+python -m pytest tests/ -v
 ```
