@@ -10,9 +10,9 @@ import { LISTINGS } from './data/mockData';
 export default function App() {
   const [currentPage, setCurrentPage] = useState<'home' | 'auth' | 'profile'>('home');
   const [selectedListing, setSelectedListing] = useState<typeof LISTINGS[0] | null>(null);
-  const [user, setUser] = useState<{ name: string; email: string; role: string; balance?: number } | null>(null);
+  const [user, setUser] = useState<any | null>(null);
 
-  const handleLoginSuccess = (userData: { name: string; email: string; role: string; balance?: number }) => {
+  const handleLoginSuccess = (userData: any) => {
     setUser(userData);
     setCurrentPage('home');
   };

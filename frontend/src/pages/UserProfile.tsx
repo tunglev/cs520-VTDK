@@ -1,5 +1,5 @@
 interface UserProfileProps {
-  user: { name: string; email: string; role: string; balance?: number };
+  user: any;
   onLogout: () => void;
 }
 
@@ -18,6 +18,9 @@ export const UserProfile = ({ user, onLogout }: UserProfileProps) => {
               <div className="inline-block px-3 py-1 bg-shadow-grey text-white font-mono text-[10px] uppercase border-2 border-black">
                 {user.role}
               </div>
+              {user.location && (
+                <div className="mt-2 font-mono text-xs uppercase">📍 {user.location}</div>
+              )}
             </div>
           </div>
           <button 
@@ -28,17 +31,43 @@ export const UserProfile = ({ user, onLogout }: UserProfileProps) => {
           </button>
         </div>
 
+        {user.bio && (
+          <div className="mb-8 p-6 border-4 border-black bg-[#FFF0ed]">
+            <h2 className="font-display uppercase text-sm tracking-widest mb-4">About Me</h2>
+            <p className="font-serif text-sm opacity-80 leading-relaxed">{user.bio}</p>
+          </div>
+        )}
+
+        {user.skills && user.skills.length > 0 && (
+          <div className="mb-8">
+            <h2 className="font-display uppercase text-sm tracking-widest mb-4">Skills</h2>
+            <div className="flex flex-wrap gap-2">
+              {user.skills.map((skill: string) => (
+                <span key={skill} className="px-3 py-1 bg-white border-2 border-black font-mono text-[10px] uppercase">
+                  {skill}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="border-4 border-black p-6 bg-rosy-copper text-white">
+          <div className="border-4 border-black p-6 bg-rosy-copper text-white flex flex-col justify-between">
             <h2 className="font-display uppercase text-sm tracking-widest mb-4">Account Balance</h2>
             <div className="text-6xl font-display tracking-tighter">${user.balance || '0.00'}</div>
           </div>
           
-          <div className="border-4 border-black p-6 bg-white">
-            <h2 className="font-display uppercase text-sm tracking-widest mb-4">Current Projects</h2>
-            <div className="font-mono text-sm uppercase opacity-50 py-8 text-center border-2 border-dashed border-black/20">
-              No active projects
-            </div>
+          <div className="border-4 border-black p-6 bg-white flex flex-col justify-between">
+            <h2 className="font-display uppercase text-sm tracking-widest mb-4">
+              {user.role === 'Freelancer' ? 'Hourly Rate' : 'Current Projects'}
+            </h2>
+            {user.role === 'Freelancer' ? (
+              <div className="text-6xl font-display tracking-tighter text-vibrant-coral">${user.hourlyRate || '0'}<span className="text-xl text-black">/hr</span></div>
+            ) : (
+              <div className="font-mono text-sm uppercase opacity-50 py-8 text-center border-2 border-dashed border-black/20">
+                No active projects
+              </div>
+            )}
           </div>
         </div>
       </div>

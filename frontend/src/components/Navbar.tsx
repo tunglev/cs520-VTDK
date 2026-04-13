@@ -1,5 +1,5 @@
 interface NavbarProps {
-  user?: { name: string; email: string; role: string; balance?: number } | null;
+  user?: any | null;
   onLoginClick: () => void;
   onHomeClick: () => void;
   onProfileClick?: () => void;
