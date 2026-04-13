@@ -6,6 +6,17 @@ import type {
   PricingReport,
 } from '../types';
 
+export const MOCK_USERS = [
+  {
+    username: 'test',
+    email: 'test@vtdk.com',
+    password: '123456',
+    name: 'Test User',
+    role: 'Client',
+    balance: 1540.00
+  }
+];
+
 export const LISTINGS: Listing[] = [
   { id: 1, name: 'Alex Rivera', role: 'UI/UX Designer', category: 'design', completedJobs: 98, price: 45, rating: 4.9, reviews: 124, location: 'Berlin, DE', tags: ['Figma', 'Prototyping'], color: 'bg-vibrant-coral' },
   { id: 2, name: 'Sarah Chen', role: 'Fullstack Developer', category: 'development', completedJobs: 74, price: 85, rating: 5.0, reviews: 89, location: 'San Francisco, US', tags: ['React', 'Node.js'], color: 'bg-rosy-copper' },

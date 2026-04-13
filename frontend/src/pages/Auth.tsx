@@ -1,7 +1,182 @@
 import { useState } from 'react';
+import { MOCK_USERS } from '../data/mockData';
+import type { User } from '../types';
 
-export const AuthPage = () => {
+interface AuthPageProps {
+  onLoginSuccess: (user: User) => void;
+}
+
+export const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
   const [isLogin, setIsLogin] = useState(true);
+  const [isOnboarding, setIsOnboarding] = useState(false);
+  
+  // Base Sign Up/Login state
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  // Onboarding state
+  const [role, setRole] = useState<'Client' | 'Freelancer'>('Client');
+  const [bio, setBio] = useState('');
+  const [location, setLocation] = useState('');
+  const [skills, setSkills] = useState('');
+  const [hourlyRate, setHourlyRate] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (isLogin) {
+      const user = MOCK_USERS.find(
+        u => (u.email === email || u.username === email) && u.password === password
+      );
+
+      if (user) {
+        onLoginSuccess(user as User);
+      } else {
+        setError('Invalid username or password. Try "test" and "123456"');
+      }
+    } else {
+      if (!isOnboarding) {
+        if (!name || !email || !password) {
+          setError('Please fill in all fields to sign up');
+          return;
+        }
+
+        // Check if user exists
+        const exists = MOCK_USERS.some(u => u.email === email || u.username === email);
+        if (exists) {
+          setError('Email or username already in use.');
+          return;
+        }
+
+        // Move to onboarding
+        setIsOnboarding(true);
+      } else {
+        // Complete Onboarding
+        if (!location) {
+          setError('Location is required.');
+          return;
+        }
+        if (role === 'Freelancer' && (!hourlyRate || !skills)) {
+          setError('Freelancers must provide an hourly rate and skills.');
+          return;
+        }
+
+        const newUser: User = {
+          username: email.split('@')[0],
+          email: email,
+          password: password,
+          name: name,
+          role: role,
+          balance: 0,
+          bio: bio,
+          location: location,
+          skills: skills ? skills.split(',').map(s => s.trim()).filter(Boolean) : [],
+          hourlyRate: role === 'Freelancer' ? Number(hourlyRate) : undefined,
+        };
+        
+        MOCK_USERS.push(newUser);
+
+        onLoginSuccess(newUser);
+      }
+    }
+  };
+
+  if (isOnboarding) {
+    return (
+      <div className="flex-1 flex max-w-7xl mx-auto w-full items-center justify-center p-8 mt-12 mb-24">
+        <div className="w-full max-w-2xl bg-white border-4 border-black p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
+          <h2 className="text-4xl font-display uppercase tracking-tighter mb-2">Complete Profile</h2>
+          <p className="font-mono text-xs uppercase opacity-60 mb-8">
+            Tell us about yourself to get started on VTDK.
+          </p>
+
+          {error && (
+            <div className="mb-4 p-4 border-2 border-vibrant-coral bg-[#FFF0ed] text-vibrant-coral font-mono text-xs uppercase">
+              {error}
+            </div>
+          )}
+
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              <label className="font-display uppercase text-[10px] tracking-widest block">I want to...</label>
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => setRole('Client')}
+                  className={`flex-1 py-4 border-2 border-black font-display uppercase transition-all ${role === 'Client' ? 'bg-vibrant-coral text-white shadow-none translate-x-1 translate-y-1' : 'bg-white hover:bg-shadow-grey hover:text-white shadow-brutal-sm'}`}
+                >
+                  Hire Talent
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole('Freelancer')}
+                  className={`flex-1 py-4 border-2 border-black font-display uppercase transition-all ${role === 'Freelancer' ? 'bg-vibrant-coral text-white shadow-none translate-x-1 translate-y-1' : 'bg-white hover:bg-shadow-grey hover:text-white shadow-brutal-sm'}`}
+                >
+                  Work as Freelancer
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="font-display uppercase text-[10px] tracking-widest block">Location *</label>
+                <input 
+                  type="text" 
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  className="w-full p-4 border-2 border-black bg-white focus:outline-none focus:border-vibrant-coral transition-colors font-mono text-sm"
+                  placeholder="NEW YORK, US"
+                />
+              </div>
+
+              {role === 'Freelancer' && (
+                <div className="space-y-2">
+                  <label className="font-display uppercase text-[10px] tracking-widest block">Hourly Rate (USD) *</label>
+                  <input 
+                    type="number" 
+                    value={hourlyRate}
+                    onChange={(e) => setHourlyRate(e.target.value)}
+                    className="w-full p-4 border-2 border-black bg-white focus:outline-none focus:border-vibrant-coral transition-colors font-mono text-sm"
+                    placeholder="75"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="font-display uppercase text-[10px] tracking-widest block">Bio</label>
+              <textarea 
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                className="w-full p-4 border-2 border-black bg-white focus:outline-none focus:border-vibrant-coral transition-colors font-mono text-sm min-h-[100px] resize-none"
+                placeholder="I am a passionate..."
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="font-display uppercase text-[10px] tracking-widest block">{role === 'Freelancer' ? 'Skills (comma separated) *' : 'Interests (comma separated)'}</label>
+              <input 
+                type="text" 
+                value={skills}
+                onChange={(e) => setSkills(e.target.value)}
+                className="w-full p-4 border-2 border-black bg-white focus:outline-none focus:border-vibrant-coral transition-colors font-mono text-sm"
+                placeholder="REACT, NODEJS, FIGMA"
+              />
+            </div>
+
+            <div className="pt-6">
+              <button type="submit" className="w-full py-4 bg-black text-white font-display uppercase border-2 border-black shadow-brutal-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
+                Complete Profile
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex max-w-7xl mx-auto w-full items-center justify-center p-8 mt-12 mb-24">
@@ -13,21 +188,47 @@ export const AuthPage = () => {
           {isLogin ? 'Enter your details to access your account' : 'Create an account to hire or work'}
         </p>
 
-        <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+        {error && (
+          <div className="mb-4 p-4 border-2 border-vibrant-coral bg-[#FFF0ed] text-vibrant-coral font-mono text-xs uppercase">
+            {error}
+          </div>
+        )}
+
+        <form className="space-y-6" onSubmit={(e) => {
+          e.preventDefault();
+          if (isLogin) {
+            handleSubmit(e);
+          } else {
+            if (!name || !email || !password) {
+              setError('Please fill in all fields to sign up');
+              return;
+            }
+            const exists = MOCK_USERS.some(u => u.email === email || u.username === email);
+            if (exists) {
+              setError('Email or username already in use.');
+              return;
+            }
+            setIsOnboarding(true);
+          }
+        }}>
           {!isLogin && (
             <div className="space-y-2">
               <label className="font-display uppercase text-[10px] tracking-widest block">Full Name</label>
               <input 
                 type="text" 
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 className="w-full p-4 border-2 border-black bg-white focus:outline-none focus:border-vibrant-coral transition-colors font-mono text-sm"
                 placeholder="JOHN DOE"
               />
             </div>
           )}
           <div className="space-y-2">
-            <label className="font-display uppercase text-[10px] tracking-widest block">Email</label>
+            <label className="font-display uppercase text-[10px] tracking-widest block">Email or Username</label>
             <input 
-              type="email" 
+              type="text" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full p-4 border-2 border-black bg-white focus:outline-none focus:border-vibrant-coral transition-colors font-mono text-sm"
               placeholder="HELLO@EXAMPLE.COM"
             />
@@ -36,6 +237,8 @@ export const AuthPage = () => {
             <label className="font-display uppercase text-[10px] tracking-widest block">Password</label>
             <input 
               type="password" 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full p-4 border-2 border-black bg-white focus:outline-none focus:border-vibrant-coral transition-colors font-mono text-sm"
               placeholder="••••••••"
             />
