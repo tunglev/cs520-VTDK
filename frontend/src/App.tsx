@@ -6,7 +6,7 @@ import { AuthPage } from './pages/Auth';
 import { FreelancerProfile } from './pages/FreelancerProfile';
 import { UserProfile } from './pages/UserProfile';
 import { LISTINGS } from './data/mockData';
-import { supabase } from './lib/supabase';
+import { supabase } from './lib/supabaseClient';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<'home' | 'auth' | 'profile'>('home');

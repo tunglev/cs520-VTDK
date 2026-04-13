@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { MOCK_USERS } from '../data/mockData';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseClient';
 import type { User } from '../types';
 
 interface AuthPageProps {
