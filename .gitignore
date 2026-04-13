@@ -5,3 +5,4 @@ __pycache__/
 *.pyc
 .venv/
 ml-service/app/trained_models/*.pkl
+.vscode
