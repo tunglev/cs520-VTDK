@@ -34,7 +34,9 @@ COMMENT ON COLUMN users.service_area IS 'Free-text region used for geographic fi
 
 -- ── Sync trigger: create a users row when someone signs up ──
 CREATE OR REPLACE FUNCTION handle_new_auth_user()
-RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
   INSERT INTO users (id, email, role)
   VALUES (
