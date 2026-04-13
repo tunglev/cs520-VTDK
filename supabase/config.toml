@@ -2,7 +2,7 @@
 # https://supabase.com/docs/guides/local-development/cli/config
 # A string used to distinguish different Supabase projects on the same host. Defaults to the
 # working directory name when running `supabase init`.
-project_id = "supabase"
+project_id = "pfnybvxlmqmiyifhyzqw"
 
 [api]
 enabled = true
@@ -394,6 +394,18 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # declarative_schema_path = "./declarative"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+[functions.manage-listing]
+enabled = true
+verify_jwt = false
+import_map = "./functions/manage-listing/deno.json"
+entrypoint = "./functions/manage-listing/index.ts"
+
+[functions.get-listings]
+enabled = true
+verify_jwt = false
+import_map = "./functions/get-listings/deno.json"
+entrypoint = "./functions/get-listings/index.ts"
 
 [functions.generate-pricing-report]
 enabled = true
