@@ -1,0 +1,4 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/ml-service/.venv/bin/python",
+  "python.terminal.activateEnvironment": true
+}
