@@ -2,9 +2,33 @@ drop extension if exists "pg_net";
 
 create extension if not exists "postgis" with schema "public";
 
-create type "public"."geometry_dump" as ("path" integer[], "geom" public.geometry);
+do $$
+begin
+	if not exists (
+		select 1
+		from pg_type t
+		join pg_namespace n on n.oid = t.typnamespace
+		where n.nspname = 'public'
+			and t.typname = 'geometry_dump'
+	) then
+		create type "public"."geometry_dump" as ("path" integer[], "geom" public.geometry);
+	end if;
+end
+$$;
 
-create type "public"."valid_detail" as ("valid" boolean, "reason" character varying, "location" public.geometry);
+do $$
+begin
+	if not exists (
+		select 1
+		from pg_type t
+		join pg_namespace n on n.oid = t.typnamespace
+		where n.nspname = 'public'
+			and t.typname = 'valid_detail'
+	) then
+		create type "public"."valid_detail" as ("valid" boolean, "reason" character varying, "location" public.geometry);
+	end if;
+end
+$$;
 
 grant delete on table "public"."spatial_ref_sys" to "anon";
 
