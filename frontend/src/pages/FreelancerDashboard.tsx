@@ -119,6 +119,8 @@ const NewListingModal = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [basePrice, setBasePrice] = useState('');
+  const [strategyType, setStrategyType] = useState<'fixed' | 'hourly' | 'project'>('hourly');
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -136,12 +138,15 @@ const NewListingModal = ({
     setLoading(true);
     setError('');
     try {
-      const { error: err } = await supabase.from('listings').insert({
-        freelancer_id: freelancerId,
+      const body: Record<string, unknown> = {
         category_id: categoryId,
         title: title.trim(),
         description: description.trim(),
-      });
+      };
+      if (basePrice) {
+        body.pricing_models = [{ strategy_type: strategyType, base_price: Number(basePrice) }];
+      }
+      const { error: err } = await supabase.functions.invoke('manage-listing', { body });
       if (err) throw err;
       onCreated();
       onClose();
@@ -202,6 +207,24 @@ const NewListingModal = ({
               placeholder="Describe what you offer..."
               className="w-full border-2 border-black bg-white px-4 py-3 font-mono text-sm focus:outline-none focus:border-vibrant-coral resize-none"
             />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="font-display uppercase text-[10px] tracking-widest block mb-1">Pricing Type</label>
+              <select value={strategyType} onChange={e => setStrategyType(e.target.value as any)}
+                className="w-full border-2 border-black bg-white px-3 py-3 font-mono text-sm focus:outline-none focus:border-vibrant-coral">
+                <option value="hourly">Hourly</option>
+                <option value="fixed">Fixed</option>
+                <option value="project">Project</option>
+              </select>
+            </div>
+            <div>
+              <label className="font-display uppercase text-[10px] tracking-widest block mb-1">Base Price ($)</label>
+              <input type="number" value={basePrice} onChange={e => setBasePrice(e.target.value)}
+                placeholder="e.g. 50"
+                className="w-full border-2 border-black bg-white px-3 py-3 font-mono text-sm focus:outline-none focus:border-vibrant-coral"
+              />
+            </div>
           </div>
         </div>
 
