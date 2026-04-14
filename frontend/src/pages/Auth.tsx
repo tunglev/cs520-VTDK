@@ -31,66 +31,55 @@ export const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
     });
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
 
     if (isLogin) {
-      const user = MOCK_USERS.find(
-        u => (u.email === email || u.username === email) && u.password === password
-      );
-
-      if (user) {
-        onLoginSuccess(user as User);
-      } else {
-        setError('Invalid username or password. Try "test" and "123456"');
+      // Real Supabase login
+      const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+      if (err) {
+        setError(err.message);
       }
+      // onAuthStateChange in App.tsx will detect the session and call onLoginSuccess
     } else {
       if (!isOnboarding) {
         if (!name || !email || !password) {
           setError('Please fill in all fields to sign up');
           return;
         }
-
-        // Check if user exists
-        const exists = MOCK_USERS.some(u => u.email === email || u.username === email);
-        if (exists) {
-          setError('Email or username already in use.');
-          return;
-        }
-
-        // Move to onboarding
         setIsOnboarding(true);
       } else {
-        // Complete Onboarding
-        if (!location) {
-          setError('Location is required.');
-          return;
-        }
+        // Complete onboarding → real Supabase sign up
+        if (!location) { setError('Location is required.'); return; }
         if (role === 'Freelancer' && (!hourlyRate || !skills)) {
           setError('Freelancers must provide an hourly rate and skills.');
           return;
         }
 
-        const newUser: User = {
-          username: email.split('@')[0],
-          email: email,
-          password: password,
-          name: name,
-          role: role,
-          balance: 0,
-          bio: bio,
-          location: location,
-          skills: skills ? skills.split(',').map(s => s.trim()).filter(Boolean) : [],
-          hourlyRate: role === 'Freelancer' ? Number(hourlyRate) : undefined,
-        };
-        
-        MOCK_USERS.push(newUser);
+        const { error: err } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: name,
+              role: role === 'Freelancer' ? 'freelancer' : 'customer',
+            },
+          },
+        });
 
-        onLoginSuccess(newUser);
+        if (err) {
+          setError(err.message);
+        } else {
+          setError('');
+          // Check email — Supabase may require email confirmation
+          setIsOnboarding(false);
+          setError('Check your email to confirm your account, then log in.');
+        }
       }
     }
   };
+
 
   if (isOnboarding) {
     return (

@@ -5,11 +5,12 @@ import { HomePage } from './pages/Home';
 import { AuthPage } from './pages/Auth';
 import { FreelancerProfile } from './pages/FreelancerProfile';
 import { UserProfile } from './pages/UserProfile';
+import { FreelancerDashboard } from './pages/FreelancerDashboard';
 import { LISTINGS } from './data/mockData';
 import { supabase } from './lib/supabaseClient';
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<'home' | 'auth' | 'profile'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'auth' | 'profile' | 'dashboard'>('home');
   const [selectedListing, setSelectedListing] = useState<typeof LISTINGS[0] | null>(null);
   const [user, setUser] = useState<any | null>(null);
 
@@ -37,7 +38,8 @@ export default function App() {
     setCurrentPage('home');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setCurrentPage('home');
   };
@@ -52,13 +54,20 @@ export default function App() {
           setSelectedListing(null);
         }}
         onProfileClick={() => {
-          setCurrentPage('profile');
+          // Freelancers go to dashboard, customers go to profile
+          if (user?.role === 'freelancer') {
+            setCurrentPage('dashboard');
+          } else {
+            setCurrentPage('profile');
+          }
           setSelectedListing(null);
         }}
       />
 
       {currentPage === 'auth' ? (
         <AuthPage onLoginSuccess={handleLoginSuccess} />
+      ) : currentPage === 'dashboard' && user ? (
+        <FreelancerDashboard user={user} onLogout={handleLogout} />
       ) : currentPage === 'profile' && user ? (
         <UserProfile user={user} onLogout={handleLogout} />
       ) : selectedListing ? (
@@ -77,13 +86,14 @@ export default function App() {
 
 function mapSupabaseUser(authUser: any) {
   return {
+    id: authUser.id,
     username: authUser.email?.split('@')[0] ?? '',
     email: authUser.email ?? '',
     name: authUser.user_metadata?.full_name
       ?? authUser.user_metadata?.name
       ?? authUser.email?.split('@')[0]
       ?? 'User',
-    role: 'Client',
+    role: (authUser.user_metadata?.role as string) ?? 'Client',
     balance: 0,
   };
 }
