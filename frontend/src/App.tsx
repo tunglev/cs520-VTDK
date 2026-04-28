@@ -54,12 +54,7 @@ export default function App() {
           setSelectedListing(null);
         }}
         onProfileClick={() => {
-          // Freelancers go to dashboard, customers go to profile
-          if (user?.role === 'freelancer') {
-            setCurrentPage('dashboard');
-          } else {
-            setCurrentPage('profile');
-          }
+          setCurrentPage('profile');
           setSelectedListing(null);
         }}
       />
@@ -69,7 +64,7 @@ export default function App() {
       ) : currentPage === 'dashboard' && user ? (
         <FreelancerDashboard user={user} onLogout={handleLogout} />
       ) : currentPage === 'profile' && user ? (
-        <UserProfile user={user} onLogout={handleLogout} />
+        <UserProfile user={user} onLogout={handleLogout} onGoToDashboard={() => setCurrentPage('dashboard')} onRoleChange={(role) => setUser({ ...user, role })} />
       ) : selectedListing ? (
         <FreelancerProfile
           listing={selectedListing}
