@@ -2,7 +2,7 @@ interface UserProfileProps {
   user: any;
   onLogout: () => void;
   onGoToDashboard: () => void;
-  onRoleChange: (role: string) => void;
+  onRoleChange: (role: string, updates?: Record<string, unknown>) => void;
 }
 
 import { useState } from 'react';
@@ -17,9 +17,10 @@ export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange }: U
 
   const isFreelancer = user.role?.toLowerCase() === 'freelancer';
   const hasFreelancerProfile = user.hourlyRate != null && user.skills?.length > 0;
+  const hasFreelancerEnrollment = Boolean(user.freelancerEnrolled) || hasFreelancerProfile;
 
   const handleRoleSwitch = async (newRole: 'customer' | 'freelancer') => {
-    if (newRole === 'freelancer' && !hasFreelancerProfile && !isEnrolling) {
+    if (newRole === 'freelancer' && !hasFreelancerEnrollment && !isEnrolling) {
       setIsEnrolling(true);
       return;
     }
@@ -27,10 +28,20 @@ export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange }: U
     setEnrollLoading(true);
     setError('');
     
+    const parsedSkills = skills
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    const authPayload: Record<string, unknown> = {
+      role: newRole,
+      freelancer_enrolled: hasFreelancerEnrollment || newRole === 'freelancer',
+      hourly_rate: hourlyRate ? Number(hourlyRate) : user.hourlyRate ?? null,
+      skills: parsedSkills.length ? parsedSkills : user.skills ?? [],
+    };
+
     // Update Auth meta data
-    const { error: authError } = await supabase.auth.updateUser({
-      data: { role: newRole }
-    });
+    const { error: authError } = await supabase.auth.updateUser({ data: authPayload });
 
     if (authError) {
       setError(authError.message);
@@ -55,7 +66,11 @@ export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange }: U
       return;
     }
 
-    onRoleChange(newRole);
+    onRoleChange(newRole, {
+      freelancerEnrolled: authPayload.freelancer_enrolled,
+      hourlyRate: authPayload.hourly_rate,
+      skills: authPayload.skills,
+    });
     setEnrollLoading(false);
     setIsEnrolling(false);
     if (newRole === 'freelancer') {

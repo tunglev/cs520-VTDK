@@ -8,6 +8,7 @@ import { cn } from '../lib/utils';
 interface FreelancerDashboardProps {
   user: { id?: string; name: string; email: string };
   onLogout: () => void;
+  onSwitchToClient: () => void;
 }
 
 // ── Stat Card ─────────────────────────────────────────────────
@@ -251,7 +252,7 @@ const NewListingModal = ({
 
 
 // ── Main Dashboard ────────────────────────────────────────────
-export const FreelancerDashboard = ({ user, onLogout }: FreelancerDashboardProps) => {
+export const FreelancerDashboard = ({ user, onLogout, onSwitchToClient }: FreelancerDashboardProps) => {
   const [listings, setListings] = useState<ServiceListing[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -315,19 +316,27 @@ export const FreelancerDashboard = ({ user, onLogout }: FreelancerDashboardProps
     <main className="flex-1 bg-bone">
       {/* Header */}
       <div className="border-b-4 border-black bg-shadow-grey text-white px-8 py-10">
-        <div className="max-w-5xl mx-auto flex items-end justify-between">
+        <div className="max-w-5xl mx-auto flex items-end justify-between gap-6 flex-wrap">
           <div>
             <div className="font-mono text-[10px] uppercase tracking-widest opacity-60 mb-2">Freelancer Dashboard</div>
             <h1 className="font-display uppercase text-4xl md:text-5xl tracking-tighter">
               Welcome back, {user.name.split(' ')[0]}
             </h1>
           </div>
-          <button
-            onClick={onLogout}
-            className="px-5 py-2 border-2 border-white/30 font-display uppercase text-sm hover:bg-white/10 transition-colors mb-2"
-          >
-            Logout
-          </button>
+          <div className="flex items-center gap-3 mb-2">
+            <button
+              onClick={onSwitchToClient}
+              className="px-5 py-2 border-2 border-white/30 font-display uppercase text-sm hover:bg-white/10 transition-colors"
+            >
+              Switch to Client
+            </button>
+            <button
+              onClick={onLogout}
+              className="px-5 py-2 border-2 border-white/30 font-display uppercase text-sm hover:bg-white/10 transition-colors"
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </div>
 
