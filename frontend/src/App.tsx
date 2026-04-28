@@ -41,6 +41,41 @@ export default function App() {
     navigate('/');
   };
 
+  const handleRoleChange = (role: string, updates?: Record<string, unknown>) => {
+    setUser(prev => prev ? { ...prev, role, ...(updates ?? {}) } : prev);
+  };
+
+  const handleSwitchToClient = async () => {
+    if (!user?.id) return;
+
+    const { error: authError } = await supabase.auth.updateUser({
+      data: {
+        role: 'customer',
+        freelancer_enrolled: Boolean(user.freelancerEnrolled),
+        hourly_rate: user.hourlyRate ?? null,
+        skills: user.skills ?? [],
+      },
+    });
+
+    if (authError) {
+      console.error(authError);
+      return;
+    }
+
+    const { error: dbError } = await supabase
+      .from('users')
+      .update({ role: 'customer' })
+      .eq('id', user.id);
+
+    if (dbError) {
+      console.error(dbError);
+      return;
+    }
+
+    handleRoleChange('customer', { role: 'customer' });
+    navigate('/profile');
+  };
+
   return (
     <div className="min-h-screen flex flex-col selection:bg-vibrant-coral selection:text-white">
       <Navbar user={user} />
@@ -53,7 +88,13 @@ export default function App() {
           path="/dashboard"
           element={
             user?.role === 'freelancer'
-              ? <FreelancerDashboard user={user} onLogout={handleLogout} />
+              ? (
+                <FreelancerDashboard
+                  user={user}
+                  onLogout={handleLogout}
+                  onSwitchToClient={handleSwitchToClient}
+                />
+              )
               : <Navigate to="/" />
           }
         />
@@ -61,7 +102,14 @@ export default function App() {
           path="/profile"
           element={
             user
-              ? <UserProfile user={user} onLogout={handleLogout} />
+              ? (
+                <UserProfile
+                  user={user}
+                  onLogout={handleLogout}
+                  onGoToDashboard={() => navigate('/dashboard')}
+                  onRoleChange={handleRoleChange}
+                />
+              )
               : <Navigate to="/auth" />
           }
         />
@@ -74,6 +122,13 @@ export default function App() {
 }
 
 function mapSupabaseUser(authUser: any) {
+  const rawSkills = authUser.user_metadata?.skills;
+  const normalizedSkills = Array.isArray(rawSkills)
+    ? rawSkills
+    : typeof rawSkills === 'string'
+      ? rawSkills.split(',').map((s: string) => s.trim()).filter(Boolean)
+      : [];
+
   return {
     id: authUser.id,
     username: authUser.email?.split('@')[0] ?? '',
@@ -83,6 +138,9 @@ function mapSupabaseUser(authUser: any) {
       ?? authUser.email?.split('@')[0]
       ?? 'User',
     role: (authUser.user_metadata?.role as string) ?? 'Client',
+    freelancerEnrolled: Boolean(authUser.user_metadata?.freelancer_enrolled),
+    hourlyRate: authUser.user_metadata?.hourly_rate ?? authUser.user_metadata?.hourlyRate ?? null,
+    skills: normalizedSkills,
     balance: 0,
   };
 }
