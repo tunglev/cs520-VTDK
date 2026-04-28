@@ -1,9 +1,68 @@
 interface UserProfileProps {
   user: any;
   onLogout: () => void;
+  onGoToDashboard: () => void;
+  onRoleChange: (role: string) => void;
 }
 
-export const UserProfile = ({ user, onLogout }: UserProfileProps) => {
+import { useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
+
+export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange }: UserProfileProps) => {
+  const [isEnrolling, setIsEnrolling] = useState(false);
+  const [enrollLoading, setEnrollLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [hourlyRate, setHourlyRate] = useState(user.hourlyRate || '');
+  const [skills, setSkills] = useState(user.skills ? user.skills.join(', ') : '');
+
+  const isFreelancer = user.role?.toLowerCase() === 'freelancer';
+  const hasFreelancerProfile = user.hourlyRate != null && user.skills?.length > 0;
+
+  const handleRoleSwitch = async (newRole: 'customer' | 'freelancer') => {
+    if (newRole === 'freelancer' && !hasFreelancerProfile && !isEnrolling) {
+      setIsEnrolling(true);
+      return;
+    }
+
+    setEnrollLoading(true);
+    setError('');
+    
+    // Update Auth meta data
+    const { error: authError } = await supabase.auth.updateUser({
+      data: { role: newRole }
+    });
+
+    if (authError) {
+      setError(authError.message);
+      setEnrollLoading(false);
+      return;
+    }
+
+    // Update public.users table
+    let updateData: any = { role: newRole };
+
+    // Fake update user metadata or other fields if desired
+    // In a real app, you would save hourlyRate and skills to DB here.
+
+    const { error: dbError } = await supabase
+      .from('users')
+      .update(updateData)
+      .eq('id', user.id);
+      
+    if (dbError) {
+      setError(dbError.message);
+      setEnrollLoading(false);
+      return;
+    }
+
+    onRoleChange(newRole);
+    setEnrollLoading(false);
+    setIsEnrolling(false);
+    if (newRole === 'freelancer') {
+      onGoToDashboard();
+    }
+  };
+
   return (
     <main className="flex-1 max-w-5xl mx-auto w-full px-8 py-20">
       <div className="bg-white border-4 border-black p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
@@ -59,9 +118,9 @@ export const UserProfile = ({ user, onLogout }: UserProfileProps) => {
           
           <div className="border-4 border-black p-6 bg-white flex flex-col justify-between">
             <h2 className="font-display uppercase text-sm tracking-widest mb-4">
-              {user.role === 'Freelancer' ? 'Hourly Rate' : 'Current Projects'}
+              {isFreelancer ? 'Hourly Rate' : 'Current Projects'}
             </h2>
-            {user.role === 'Freelancer' ? (
+            {isFreelancer ? (
               <div className="text-6xl font-display tracking-tighter text-vibrant-coral">${user.hourlyRate || '0'}<span className="text-xl text-black">/hr</span></div>
             ) : (
               <div className="font-mono text-sm uppercase opacity-50 py-8 text-center border-2 border-dashed border-black/20">
@@ -69,6 +128,84 @@ export const UserProfile = ({ user, onLogout }: UserProfileProps) => {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="mt-8 border-4 border-black p-6 bg-shadow-grey text-white">
+          <h2 className="font-display uppercase text-lg tracking-widest mb-4">Mode Switch</h2>
+          {error && <p className="text-vibrant-coral font-mono text-sm mb-4">{error}</p>}
+          {isEnrolling ? (
+            <div className="mt-4">
+              <h3 className="font-display uppercase tracking-widest mb-4 text-vibrant-coral">Enroll as Freelancer</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div className="space-y-2">
+                  <label className="font-display uppercase text-[10px] tracking-widest block">Hourly Rate (USD) *</label>
+                  <input 
+                    type="number" 
+                    value={hourlyRate}
+                    onChange={(e) => setHourlyRate(e.target.value)}
+                    className="w-full p-4 border-2 border-black bg-white text-black focus:outline-none focus:border-vibrant-coral transition-colors font-mono text-sm"
+                    placeholder="75"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="font-display uppercase text-[10px] tracking-widest block">Skills (comma separated) *</label>
+                  <input 
+                    type="text" 
+                    value={skills}
+                    onChange={(e) => setSkills(e.target.value)}
+                    className="w-full p-4 border-2 border-black bg-white text-black focus:outline-none focus:border-vibrant-coral transition-colors font-mono text-sm"
+                    placeholder="REACT, NODEJS, FIGMA"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => handleRoleSwitch('freelancer')}
+                  disabled={enrollLoading || !hourlyRate || !skills}
+                  className="px-6 py-3 bg-vibrant-coral text-white font-display uppercase border-2 border-black shadow-none hover:-translate-x-1 hover:-translate-y-1 hover:shadow-brutal-sm transition-all disabled:opacity-50"
+                >
+                  {enrollLoading ? 'Enrolling...' : 'Complete Enrollment'}
+                </button>
+                <button 
+                  onClick={() => setIsEnrolling(false)}
+                  disabled={enrollLoading}
+                  className="px-6 py-3 bg-white text-black font-display uppercase border-2 border-black shadow-none hover:-translate-x-1 hover:-translate-y-1 hover:shadow-brutal-sm transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : isFreelancer ? (
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <p className="font-mono uppercase text-sm opacity-80">You are currently in Freelancer mode.</p>
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => handleRoleSwitch('customer')}
+                  disabled={enrollLoading}
+                  className="px-6 py-3 bg-white text-black font-display uppercase border-2 border-black shadow-none hover:-translate-x-1 hover:-translate-y-1 hover:shadow-brutal-sm transition-all disabled:opacity-50"
+                >
+                  {enrollLoading ? 'Switching...' : 'Switch to Client'}
+                </button>
+                <button 
+                  onClick={onGoToDashboard}
+                  className="px-6 py-3 bg-vibrant-coral text-white font-display uppercase border-2 border-black shadow-none hover:-translate-x-1 hover:-translate-y-1 hover:shadow-brutal-sm transition-all"
+                >
+                  Go to Dashboard
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <p className="font-mono uppercase text-sm opacity-80">Looking to offer your services or switch back? Switch to freelancer mode.</p>
+              <button 
+                onClick={() => handleRoleSwitch('freelancer')}
+                disabled={enrollLoading}
+                className="px-6 py-3 bg-vibrant-coral text-white font-display uppercase border-2 border-black shadow-none hover:-translate-x-1 hover:-translate-y-1 hover:shadow-brutal-sm transition-all disabled:opacity-50"
+              >
+                {enrollLoading ? 'Switching...' : 'Switch to Freelancer'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </main>
