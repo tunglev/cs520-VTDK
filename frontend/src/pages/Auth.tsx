@@ -18,11 +18,9 @@ export const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
   const [error, setError] = useState('');
 
   // Onboarding state
-  const [role, setRole] = useState<'Client' | 'Freelancer'>('Client');
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
-  const [skills, setSkills] = useState('');
-  const [hourlyRate, setHourlyRate] = useState('');
+  const [interests, setInterests] = useState('');
 
   const handleGoogleLogin = async () => {
     await supabase.auth.signInWithOAuth({
@@ -52,10 +50,6 @@ export const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
       } else {
         // Complete onboarding → real Supabase sign up
         if (!location) { setError('Location is required.'); return; }
-        if (role === 'Freelancer' && (!hourlyRate || !skills)) {
-          setError('Freelancers must provide an hourly rate and skills.');
-          return;
-        }
 
         const { error: err } = await supabase.auth.signUp({
           email,
@@ -63,7 +57,7 @@ export const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
           options: {
             data: {
               full_name: name,
-              role: role === 'Freelancer' ? 'freelancer' : 'customer',
+              role: 'customer',
             },
           },
         });
@@ -118,27 +112,8 @@ export const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
               <span className="font-mono text-[10px] uppercase opacity-40">or</span>
               <div className="flex-1 border-t-2 border-black/10" />
             </div>
-            <div className="space-y-4">
-              <label className="font-display uppercase text-[10px] tracking-widest block">I want to...</label>
-              <div className="flex gap-4">
-                <button
-                  type="button"
-                  onClick={() => setRole('Client')}
-                  className={`flex-1 py-4 border-2 border-black font-display uppercase transition-all ${role === 'Client' ? 'bg-vibrant-coral text-white shadow-none translate-x-1 translate-y-1' : 'bg-white hover:bg-shadow-grey hover:text-white shadow-brutal-sm'}`}
-                >
-                  Hire Talent
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRole('Freelancer')}
-                  className={`flex-1 py-4 border-2 border-black font-display uppercase transition-all ${role === 'Freelancer' ? 'bg-vibrant-coral text-white shadow-none translate-x-1 translate-y-1' : 'bg-white hover:bg-shadow-grey hover:text-white shadow-brutal-sm'}`}
-                >
-                  Work as Freelancer
-                </button>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               <div className="space-y-2">
                 <label className="font-display uppercase text-[10px] tracking-widest block">Location *</label>
                 <input 
@@ -149,19 +124,6 @@ export const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
                   placeholder="NEW YORK, US"
                 />
               </div>
-
-              {role === 'Freelancer' && (
-                <div className="space-y-2">
-                  <label className="font-display uppercase text-[10px] tracking-widest block">Hourly Rate (USD) *</label>
-                  <input 
-                    type="number" 
-                    value={hourlyRate}
-                    onChange={(e) => setHourlyRate(e.target.value)}
-                    className="w-full p-4 border-2 border-black bg-white focus:outline-none focus:border-vibrant-coral transition-colors font-mono text-sm"
-                    placeholder="75"
-                  />
-                </div>
-              )}
             </div>
 
             <div className="space-y-2">
@@ -175,13 +137,13 @@ export const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
             </div>
 
             <div className="space-y-2">
-              <label className="font-display uppercase text-[10px] tracking-widest block">{role === 'Freelancer' ? 'Skills (comma separated) *' : 'Interests (comma separated)'}</label>
+              <label className="font-display uppercase text-[10px] tracking-widest block">Interests (comma separated)</label>
               <input 
                 type="text" 
-                value={skills}
-                onChange={(e) => setSkills(e.target.value)}
+                value={interests}
+                onChange={(e) => setInterests(e.target.value)}
                 className="w-full p-4 border-2 border-black bg-white focus:outline-none focus:border-vibrant-coral transition-colors font-mono text-sm"
-                placeholder="REACT, NODEJS, FIGMA"
+                placeholder="APP DEVELOPMENT, DESIGN"
               />
             </div>
 

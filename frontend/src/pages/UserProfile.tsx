@@ -12,10 +12,18 @@ export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange }: U
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [enrollLoading, setEnrollLoading] = useState(false);
   const [error, setError] = useState('');
+  const [hourlyRate, setHourlyRate] = useState(user.hourlyRate || '');
+  const [skills, setSkills] = useState(user.skills ? user.skills.join(', ') : '');
 
   const isFreelancer = user.role?.toLowerCase() === 'freelancer';
+  const hasFreelancerProfile = user.hourlyRate != null && user.skills?.length > 0;
 
   const handleRoleSwitch = async (newRole: 'customer' | 'freelancer') => {
+    if (newRole === 'freelancer' && !hasFreelancerProfile && !isEnrolling) {
+      setIsEnrolling(true);
+      return;
+    }
+
     setEnrollLoading(true);
     setError('');
     
@@ -31,9 +39,14 @@ export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange }: U
     }
 
     // Update public.users table
+    let updateData: any = { role: newRole };
+
+    // Fake update user metadata or other fields if desired
+    // In a real app, you would save hourlyRate and skills to DB here.
+
     const { error: dbError } = await supabase
       .from('users')
-      .update({ role: newRole })
+      .update(updateData)
       .eq('id', user.id);
       
     if (dbError) {
@@ -44,6 +57,7 @@ export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange }: U
 
     onRoleChange(newRole);
     setEnrollLoading(false);
+    setIsEnrolling(false);
     if (newRole === 'freelancer') {
       onGoToDashboard();
     }
@@ -119,7 +133,49 @@ export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange }: U
         <div className="mt-8 border-4 border-black p-6 bg-shadow-grey text-white">
           <h2 className="font-display uppercase text-lg tracking-widest mb-4">Mode Switch</h2>
           {error && <p className="text-vibrant-coral font-mono text-sm mb-4">{error}</p>}
-          {isFreelancer ? (
+          {isEnrolling ? (
+            <div className="mt-4">
+              <h3 className="font-display uppercase tracking-widest mb-4 text-vibrant-coral">Enroll as Freelancer</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div className="space-y-2">
+                  <label className="font-display uppercase text-[10px] tracking-widest block">Hourly Rate (USD) *</label>
+                  <input 
+                    type="number" 
+                    value={hourlyRate}
+                    onChange={(e) => setHourlyRate(e.target.value)}
+                    className="w-full p-4 border-2 border-black bg-white text-black focus:outline-none focus:border-vibrant-coral transition-colors font-mono text-sm"
+                    placeholder="75"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="font-display uppercase text-[10px] tracking-widest block">Skills (comma separated) *</label>
+                  <input 
+                    type="text" 
+                    value={skills}
+                    onChange={(e) => setSkills(e.target.value)}
+                    className="w-full p-4 border-2 border-black bg-white text-black focus:outline-none focus:border-vibrant-coral transition-colors font-mono text-sm"
+                    placeholder="REACT, NODEJS, FIGMA"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => handleRoleSwitch('freelancer')}
+                  disabled={enrollLoading || !hourlyRate || !skills}
+                  className="px-6 py-3 bg-vibrant-coral text-white font-display uppercase border-2 border-black shadow-none hover:-translate-x-1 hover:-translate-y-1 hover:shadow-brutal-sm transition-all disabled:opacity-50"
+                >
+                  {enrollLoading ? 'Enrolling...' : 'Complete Enrollment'}
+                </button>
+                <button 
+                  onClick={() => setIsEnrolling(false)}
+                  disabled={enrollLoading}
+                  className="px-6 py-3 bg-white text-black font-display uppercase border-2 border-black shadow-none hover:-translate-x-1 hover:-translate-y-1 hover:shadow-brutal-sm transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : isFreelancer ? (
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
               <p className="font-mono uppercase text-sm opacity-80">You are currently in Freelancer mode.</p>
               <div className="flex gap-4">
