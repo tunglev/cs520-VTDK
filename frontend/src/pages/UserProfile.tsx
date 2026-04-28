@@ -15,13 +15,13 @@ export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange }: U
 
   const isFreelancer = user.role?.toLowerCase() === 'freelancer';
 
-  const handleEnroll = async () => {
+  const handleRoleSwitch = async (newRole: 'customer' | 'freelancer') => {
     setEnrollLoading(true);
     setError('');
     
     // Update Auth meta data
     const { error: authError } = await supabase.auth.updateUser({
-      data: { role: 'freelancer' }
+      data: { role: newRole }
     });
 
     if (authError) {
@@ -33,7 +33,7 @@ export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange }: U
     // Update public.users table
     const { error: dbError } = await supabase
       .from('users')
-      .update({ role: 'freelancer' })
+      .update({ role: newRole })
       .eq('id', user.id);
       
     if (dbError) {
@@ -42,9 +42,11 @@ export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange }: U
       return;
     }
 
-    onRoleChange('freelancer');
+    onRoleChange(newRole);
     setEnrollLoading(false);
-    onGoToDashboard();
+    if (newRole === 'freelancer') {
+      onGoToDashboard();
+    }
   };
 
   return (
@@ -115,27 +117,36 @@ export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange }: U
         </div>
 
         <div className="mt-8 border-4 border-black p-6 bg-shadow-grey text-white">
-          <h2 className="font-display uppercase text-lg tracking-widest mb-4">Freelancer Status</h2>
+          <h2 className="font-display uppercase text-lg tracking-widest mb-4">Mode Switch</h2>
           {error && <p className="text-vibrant-coral font-mono text-sm mb-4">{error}</p>}
           {isFreelancer ? (
-            <div className="flex justify-between items-center">
-              <p className="font-mono uppercase text-sm opacity-80">You are enrolled as a freelancer.</p>
-              <button 
-                onClick={onGoToDashboard}
-                className="px-6 py-3 bg-vibrant-coral text-white font-display uppercase border-2 border-black shadow-none hover:-translate-x-1 hover:-translate-y-1 hover:shadow-brutal-sm transition-all"
-              >
-                Go to my Freelancer Dashboard
-              </button>
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <p className="font-mono uppercase text-sm opacity-80">You are currently in Freelancer mode.</p>
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => handleRoleSwitch('customer')}
+                  disabled={enrollLoading}
+                  className="px-6 py-3 bg-white text-black font-display uppercase border-2 border-black shadow-none hover:-translate-x-1 hover:-translate-y-1 hover:shadow-brutal-sm transition-all disabled:opacity-50"
+                >
+                  {enrollLoading ? 'Switching...' : 'Switch to Client'}
+                </button>
+                <button 
+                  onClick={onGoToDashboard}
+                  className="px-6 py-3 bg-vibrant-coral text-white font-display uppercase border-2 border-black shadow-none hover:-translate-x-1 hover:-translate-y-1 hover:shadow-brutal-sm transition-all"
+                >
+                  Go to Dashboard
+                </button>
+              </div>
             </div>
           ) : (
-            <div className="flex justify-between items-center">
-              <p className="font-mono uppercase text-sm opacity-80">Looking to offer your services? Enroll as a freelancer today.</p>
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <p className="font-mono uppercase text-sm opacity-80">Looking to offer your services or switch back? Switch to freelancer mode.</p>
               <button 
-                onClick={handleEnroll}
+                onClick={() => handleRoleSwitch('freelancer')}
                 disabled={enrollLoading}
                 className="px-6 py-3 bg-vibrant-coral text-white font-display uppercase border-2 border-black shadow-none hover:-translate-x-1 hover:-translate-y-1 hover:shadow-brutal-sm transition-all disabled:opacity-50"
               >
-                {enrollLoading ? 'Enrolling...' : 'Enroll as Freelancer'}
+                {enrollLoading ? 'Switching...' : 'Switch to Freelancer'}
               </button>
             </div>
           )}
