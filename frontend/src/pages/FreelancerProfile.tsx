@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Star, MapPin, Clock, Briefcase, BarChart2, CheckCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -6,13 +7,13 @@ import { FREELANCER_PROFILES, getPricingReport } from '../data/mockData';
 import { LISTINGS } from '../data/mockData';
 import { PricingReportModal } from '../components/PricingReportModal';
 
-interface FreelancerProfileProps {
-  listing: typeof LISTINGS[0];
-  onBack: () => void;
-}
-
-export const FreelancerProfile = ({ listing, onBack }: FreelancerProfileProps) => {
+export const FreelancerProfile = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [reportOpen, setReportOpen] = useState(false);
+
+  const listing = LISTINGS.find(l => l.id === Number(id));
+  if (!listing) return null;
 
   const profile = FREELANCER_PROFILES[listing.id];
   const report = getPricingReport(listing);
@@ -28,7 +29,7 @@ export const FreelancerProfile = ({ listing, onBack }: FreelancerProfileProps) =
       >
         {/* Back nav */}
         <button
-          onClick={onBack}
+          onClick={() => navigate(-1)}
           className="flex items-center gap-2 font-mono text-xs uppercase mb-10 hover:text-vibrant-coral transition-colors group"
         >
           <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />

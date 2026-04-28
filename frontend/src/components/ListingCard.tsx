@@ -1,14 +1,14 @@
+import { Link } from 'react-router-dom';
 import { Star, MapPin, ArrowRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { LISTINGS } from '../data/mockData';
 
 interface ListingCardProps {
   listing: typeof LISTINGS[0];
-  onSelect: (listing: typeof LISTINGS[0]) => void;
 }
 
-export const ListingCard = ({ listing, onSelect }: ListingCardProps) => (
-  <div 
+export const ListingCard = ({ listing }: ListingCardProps) => (
+  <div
     className={cn(
       "group relative p-6 border-4 border-black shadow-brutal hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] transition-all h-full flex flex-col",
       listing.color
@@ -44,11 +44,11 @@ export const ListingCard = ({ listing, onSelect }: ListingCardProps) => (
       ))}
     </div>
 
-    <button
-      onClick={() => onSelect(listing)}
+    <Link
+      to={`/freelancer/${listing.id}`}
       className="w-full py-3 bg-shadow-grey text-white font-display uppercase text-sm border-2 border-black flex items-center justify-center gap-2 group-hover:bg-vibrant-coral transition-colors mt-auto"
     >
       View Profile <ArrowRight size={16} />
-    </button>
+    </Link>
   </div>
 );
