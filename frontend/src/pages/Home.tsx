@@ -6,16 +6,12 @@ import { LISTINGS, PRICE_DISTRIBUTION } from '../data/mockData';
 import { PriceChart } from '../components/PriceChart';
 import { ListingCard } from '../components/ListingCard';
 
-interface HomePageProps {
-  onSelectListing: (listing: typeof LISTINGS[0]) => void;
-}
-
-export const HomePage = ({ onSelectListing }: HomePageProps) => {
+export const HomePage = () => {
   const [search, setSearch] = useState('');
   const [activeRange, setActiveRange] = useState<string | null>(null);
 
   const filteredListings = useMemo(() => {
-    return LISTINGS.filter(l => 
+    return LISTINGS.filter(l =>
       l.name.toLowerCase().includes(search.toLowerCase()) ||
       l.role.toLowerCase().includes(search.toLowerCase()) ||
       l.tags.some(t => t.toLowerCase().includes(search.toLowerCase()))
@@ -26,7 +22,7 @@ export const HomePage = ({ onSelectListing }: HomePageProps) => {
     <main className="flex-1 max-w-7xl mx-auto w-full px-8 py-20">
       {/* Hero Section */}
       <div className="max-w-4xl mb-20">
-        <motion.h1 
+        <motion.h1
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           className="text-7xl md:text-9xl font-display uppercase leading-none tracking-tighter mb-12"
@@ -41,7 +37,7 @@ export const HomePage = ({ onSelectListing }: HomePageProps) => {
             <div className="pl-6 text-shadow-grey">
               <Search size={32} strokeWidth={3} />
             </div>
-            <input 
+            <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -55,10 +51,10 @@ export const HomePage = ({ onSelectListing }: HomePageProps) => {
         </div>
 
         <PriceChart activeRange={activeRange} />
-        
+
         <div className="mt-4 flex gap-4 overflow-x-auto pb-4">
           {PRICE_DISTRIBUTION.map(p => (
-            <button 
+            <button
               key={p.range}
               onClick={() => setActiveRange(activeRange === p.range ? null : p.range)}
               className={cn(
@@ -94,7 +90,7 @@ export const HomePage = ({ onSelectListing }: HomePageProps) => {
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.2 }}
               >
-                <ListingCard listing={listing} onSelect={onSelectListing} />
+                <ListingCard listing={listing} />
               </motion.div>
             ))}
           </AnimatePresence>

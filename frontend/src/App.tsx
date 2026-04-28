@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { HomePage } from './pages/Home';
@@ -6,25 +7,21 @@ import { AuthPage } from './pages/Auth';
 import { FreelancerProfile } from './pages/FreelancerProfile';
 import { UserProfile } from './pages/UserProfile';
 import { FreelancerDashboard } from './pages/FreelancerDashboard';
-import { LISTINGS } from './data/mockData';
 import { supabase } from './lib/supabaseClient';
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<'home' | 'auth' | 'profile' | 'dashboard'>('home');
-  const [selectedListing, setSelectedListing] = useState<typeof LISTINGS[0] | null>(null);
   const [user, setUser] = useState<any | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Pick up existing session (e.g. after Google OAuth redirect)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) setUser(mapSupabaseUser(session.user));
     });
 
-    // Listen for login / logout events
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser(mapSupabaseUser(session.user));
-        setCurrentPage('home');
+        navigate('/');
       } else {
         setUser(null);
       }
@@ -35,49 +32,41 @@ export default function App() {
 
   const handleLoginSuccess = (userData: any) => {
     setUser(userData);
-    setCurrentPage('home');
+    navigate('/');
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    setCurrentPage('home');
+    navigate('/');
   };
 
   return (
     <div className="min-h-screen flex flex-col selection:bg-vibrant-coral selection:text-white">
-      <Navbar
-        user={user}
-        onLoginClick={() => setCurrentPage('auth')}
-        onHomeClick={() => {
-          setCurrentPage('home');
-          setSelectedListing(null);
-        }}
-        onProfileClick={() => {
-          // Freelancers go to dashboard, customers go to profile
-          if (user?.role === 'freelancer') {
-            setCurrentPage('dashboard');
-          } else {
-            setCurrentPage('profile');
-          }
-          setSelectedListing(null);
-        }}
-      />
+      <Navbar user={user} />
 
-      {currentPage === 'auth' ? (
-        <AuthPage onLoginSuccess={handleLoginSuccess} />
-      ) : currentPage === 'dashboard' && user ? (
-        <FreelancerDashboard user={user} onLogout={handleLogout} />
-      ) : currentPage === 'profile' && user ? (
-        <UserProfile user={user} onLogout={handleLogout} />
-      ) : selectedListing ? (
-        <FreelancerProfile
-          listing={selectedListing}
-          onBack={() => setSelectedListing(null)}
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/auth" element={<AuthPage onLoginSuccess={handleLoginSuccess} />} />
+        <Route path="/freelancer/:id" element={<FreelancerProfile />} />
+        <Route
+          path="/dashboard"
+          element={
+            user?.role === 'freelancer'
+              ? <FreelancerDashboard user={user} onLogout={handleLogout} />
+              : <Navigate to="/" />
+          }
         />
-      ) : (
-        <HomePage onSelectListing={setSelectedListing} />
-      )}
+        <Route
+          path="/profile"
+          element={
+            user
+              ? <UserProfile user={user} onLogout={handleLogout} />
+              : <Navigate to="/auth" />
+          }
+        />
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
 
       <Footer />
     </div>
