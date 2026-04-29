@@ -94,8 +94,8 @@ Each service has its own `.env` file. See `.env.example` for the full reference.
 | File | Gitignored | Purpose |
 |---|---|---|
 | `frontend/.env.local` | yes | Supabase URL/anon key, ML service URL |
-| `supabase/.env` | yes | CLI access token, service role key, ML service URL |
-| `ml-service/.env` | yes | Supabase URL + service role key for DB reads |
+| `supabase/.env.local` | yes | ML service URL, anon key, service role key (for tests) |
+| `ml-service/.env.local` | yes | Supabase URL + service role key for DB reads |
 
 > **Never commit any `.env` file.** The `.env.example` file is the only env file that belongs in the repo.
 

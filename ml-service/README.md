@@ -46,7 +46,7 @@ pip install -r requirements.txt
 pip install -r requirements-dev.txt
 ```
 
-Create `ml-service/.env`:
+Create `ml-service/.env.local`:
 
 ```
 SUPABASE_URL=https://xxxx.supabase.co

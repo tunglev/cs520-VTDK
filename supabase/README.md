@@ -99,19 +99,17 @@ It must contain the following variables:
 # Find your LAN IP with: ipconfig getifaddr en0
 ML_SERVICE_URL=http://172.x.x.x:8000
 
-
-# These are automatically available in the local Supabase runtime and do NOT
-# need to be set here. They are listed for reference only.
-# SUPABASE_URL=http://127.0.0.1:54321
-# SUPABASE_ANON_KEY=<from supabase status>
-# SUPABASE_SERVICE_ROLE_KEY=<from supabase status>
+# Required for integration tests (deno test runs outside the Edge Functions
+# runtime and does not get automatic injection). Get these from: supabase status
+SUPABASE_ANON_KEY=<Publishable key from supabase status>
+SUPABASE_SERVICE_ROLE_KEY=<Secret key from supabase status>
 ```
 
 
 Run `supabase status` at any time to see your local `anon key` (listed as `Publishable`) and `service_role key` (listed as `Secret`).
 
 
-> **Note:** `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically by the Edge Functions runtime — you only need `ML_SERVICE_URL` in `.env.local`. If you add any variable with a `SUPABASE_` prefix it will be skipped with a warning.
+> **Note:** When running `supabase functions serve`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically by the runtime (any `SUPABASE_*` variable you add will be skipped with a warning). However, integration tests run via `deno test` outside this runtime, so those variables must be present in `.env.local` and loaded with `--env-file=supabase/.env.local`.
 
 
 ### Cloud secrets (production)
@@ -166,7 +164,7 @@ Edge Functions run on the Deno runtime. They handle business logic that requires
 
 
 ```bash
-supabase functions serve --env-file supabase/.env.local
+supabase functions serve --env-file=supabase/.env.local
 ```
 
 
@@ -201,7 +199,7 @@ supabase start
 
 
 # Terminal 2 — Edge Functions runtime
-supabase functions serve --env-file supabase/.env.local
+supabase functions serve --env-file=supabase/.env.local
 
 
 # Terminal 3 — ML microservice (required for generate-pricing-report)
@@ -214,7 +212,7 @@ uvicorn app.main:app --reload --port 8000 --host 0.0.0.0
 
 
 ```bash
-deno test supabase/functions/ --allow-net --allow-env --ignore=supabase/functions/_shared
+deno test supabase/functions/ --allow-net --allow-env --env-file=supabase/.env.local --ignore=supabase/functions/_shared
 ```
 
 
@@ -223,15 +221,15 @@ deno test supabase/functions/ --allow-net --allow-env --ignore=supabase/function
 
 ```bash
 # Pricing report
-deno test supabase/functions/generate-pricing-report/index.test.ts --allow-net --allow-env
+deno test supabase/functions/generate-pricing-report/index.test.ts --allow-net --allow-env --env-file=supabase/.env.local
 
 
 # Offer lifecycle
-deno test supabase/functions/accept-reject-offer/index.test.ts --allow-net --allow-env
+deno test supabase/functions/accept-reject-offer/index.test.ts --allow-net --allow-env --env-file=supabase/.env.local
 
 
 # Review submission
-deno test supabase/functions/submit-review/index.test.ts --allow-net --allow-env
+deno test supabase/functions/submit-review/index.test.ts --allow-net --allow-env --env-file=supabase/.env.local
 ```
 
 

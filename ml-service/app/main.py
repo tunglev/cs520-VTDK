@@ -14,7 +14,7 @@ from app.models.price_predictor import router as price_router
 from app.models.anomaly_detector import router as anomaly_router
 from app.models.service_categorizer import router as category_router
 
-load_dotenv()
+load_dotenv(".env.local")
 
 app = FastAPI(
     title="Fairlance ML Service",
