@@ -13,6 +13,11 @@ import os
 import random
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parents[3] / ".env")
 
 from app.data.db import get_client
 

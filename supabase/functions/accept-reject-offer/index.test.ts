@@ -3,10 +3,10 @@
 *
 * Prerequisites:
 *   - `supabase start` running
-*   - `supabase functions serve --env-file=supabase/.env.local` running
+*   - `supabase functions serve --env-file=.env` running
 *
 * Run:
-*   deno test supabase/functions/accept-reject-offer/index.test.ts --allow-net --allow-env --env-file=supabase/.env.local
+*   deno test supabase/functions/accept-reject-offer/index.test.ts --allow-net --allow-env --env-file=.env
 */
 
 
@@ -23,7 +23,7 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 
 if (!ANON_KEY || !SERVICE_KEY) {
- throw new Error("SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY must be set. Run tests with: deno test ... --env-file=supabase/.env.local");
+ throw new Error("SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY must be set. Run tests with: deno test ... --env-file=.env");
 }
 
 

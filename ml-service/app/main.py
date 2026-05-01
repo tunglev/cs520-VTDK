@@ -5,6 +5,7 @@ Registers all three ML routers and configures CORS so the React
 frontend (Vercel) and Supabase Edge Functions can call the service.
 """
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -14,7 +15,7 @@ from app.models.price_predictor import router as price_router
 from app.models.anomaly_detector import router as anomaly_router
 from app.models.service_categorizer import router as category_router
 
-load_dotenv(".env.local")
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 app = FastAPI(
     title="Fairlance ML Service",
