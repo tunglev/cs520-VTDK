@@ -1,32 +1,85 @@
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This enables autocomplete, go to definition, etc.
+import "@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
-// Setup type definitions for built-in Supabase Runtime APIs
-import "@supabase/functions-js/edge-runtime.d.ts"
+const supabase = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+);
 
-console.log("Hello from Functions!")
+const ML_SERVICE_URL = Deno.env.get("ML_SERVICE_URL")!;
 
-Deno.serve(async (req) => {
-  const { name } = await req.json()
-  const data = {
-    message: `Hello ${name}!`,
+Deno.serve(async (req: Request) => {
+  if (req.method !== "POST") {
+    return new Response("Method Not Allowed", { status: 405 });
   }
 
-  return new Response(
-    JSON.stringify(data),
-    { headers: { "Content-Type": "application/json" } },
-  )
-})
+  const { category_id, location = "", rating = 4.5 } = await req.json() as {
+    category_id: string;
+    location?: string;
+    rating?: number;
+  };
 
-/* To invoke locally:
+  if (!category_id) {
+    return new Response(JSON.stringify({ error: "category_id is required" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
-  1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
-  2. Make an HTTP request:
+  // 1. Aggregate query — uses service role so RLS doesn't restrict cross-user reads.
+  const { data: aggregate, error: aggError } = await supabase
+    .from("pricing_report_aggregates")
+    .select("*")
+    .eq("category_id", category_id)
+    .single();
 
-  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/generate-pricing-report' \
-    --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' \
-    --header 'Content-Type: application/json' \
-    --data '{"name":"Functions"}'
+  if (aggError) {
+    return new Response(JSON.stringify({ error: "Not enough data for this category yet." }), {
+      status: 404,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
-*/
+  // 2. Get individual prices for anomaly detection.
+  const { data: priceRows } = await supabase
+    .from("transactions")
+    .select("final_price")
+    .eq("category_id", category_id)
+    .not("completed_at", "is", null);
+
+  const prices = (priceRows ?? []).map((r: { final_price: number }) => r.final_price);
+
+  // 3. Call ML service.
+  const [predRes, anomalyRes] = await Promise.all([
+    fetch(`${ML_SERVICE_URL}/predict-price`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category: category_id, location, rating }),
+    }),
+    prices.length > 0
+      ? fetch(`${ML_SERVICE_URL}/detect-anomalies`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prices }),
+        })
+      : Promise.resolve(null),
+  ]);
+
+  const prediction  = predRes.ok    ? await predRes.json()    : { minPrice: 0, maxPrice: 0, suggestedPrice: 0 };
+  const anomalies   = anomalyRes && anomalyRes.ok ? await anomalyRes.json() : { outlierIndices: [], scores: [] };
+
+  const report = {
+    categoryId:       aggregate.category_id,
+    marketMin:        aggregate.price_min,
+    marketMax:        aggregate.price_max,
+    marketAvg:        aggregate.price_avg,
+    marketMedian:     aggregate.price_median,
+    transactionCount: aggregate.transaction_count,
+    prediction,
+    anomalies,
+  };
+
+  return new Response(JSON.stringify(report), {
+    headers: { "Content-Type": "application/json" },
+  });
+});

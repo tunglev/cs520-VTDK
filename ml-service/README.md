@@ -46,12 +46,10 @@ pip install -r requirements.txt
 pip install -r requirements-dev.txt
 ```
 
-Create `ml-service/.env`:
+Copy `.env.example` to `.env` at the repo root and fill in your values. The service loads it automatically on startup — no per-service file needed.
 
-```
-SUPABASE_URL=https://xxxx.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
-PORT=8000
+```bash
+cp .env.example .env   # repo root — fill in your values
 ```
 
 Start the server:
@@ -64,13 +62,13 @@ Visit `http://localhost:8000/docs` for the interactive Swagger UI.
 
 ### Environment variables
 
+All read from the root `.env` file. See `.env.example` for where to find each value.
+
 | Variable | Required | Purpose |
 |---|---|---|
 | `SUPABASE_URL` | yes | Supabase project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | yes | Bypasses RLS to read aggregate transaction data across all users |
-| `PORT` | no | Railway sets this automatically; defaults to 8000 locally |
-
-> The service role key is required because the ML models read transaction data across all users to compute market pricing. This key must never be exposed to the browser.
+| `SUPABASE_SERVICE_ROLE_KEY` | yes | Bypasses RLS to read aggregate transaction data across all users — **never expose to the browser** |
+| `PORT` | no | Server port; Railway sets this automatically in production, defaults to 8000 locally |
 
 ## Training the models
 

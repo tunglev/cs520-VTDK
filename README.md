@@ -33,7 +33,7 @@ freelance-marketplace/
 ├── frontend/          # React + TypeScript client
 ├── supabase/          # DB migrations, RLS policies, Edge Functions
 ├── ml-service/        # FastAPI ML microservice
-├── .env.example       # All required environment variables (copy per service)
+├── .env.example       # All required environment variables — copy to .env and fill in
 └── README.md
 ```
 
@@ -56,9 +56,10 @@ cd freelance-marketplace
 ### 2. Set up environment variables
 
 ```bash
-cp .env.example .env.example   # read the file and create per-service .env files
-# See .env.example for which variables go where
+cp .env.example .env   # then fill in your values
 ```
+
+That's it — one file, all three services read from it. See `.env.example` for what each variable does and where to find it.
 
 ### 3. Start all three services
 
@@ -89,15 +90,18 @@ The app will be running at `http://localhost:5173`.
 
 ## Environment variables
 
-Each service has its own `.env` file. See `.env.example` for the full reference.
+A single root `.env` file (copied from `.env.example`) configures all three services. No per-service env files are needed.
 
-| File | Gitignored | Purpose |
+| Variable | Used by | Purpose |
 |---|---|---|
-| `frontend/.env.local` | yes | Supabase URL/anon key, ML service URL |
-| `supabase/.env` | yes | CLI access token, service role key, ML service URL |
-| `ml-service/.env` | yes | Supabase URL + service role key for DB reads |
+| `SUPABASE_URL` | frontend, ml-service, Edge Functions | Supabase project URL |
+| `SUPABASE_ANON_KEY` | frontend, supabase tests | Publishable key — safe to expose to the browser |
+| `SUPABASE_SERVICE_ROLE_KEY` | ml-service, supabase tests, Edge Functions | Bypasses RLS — never expose to the browser |
+| `ML_SERVICE_URL` | supabase Edge Functions | ML microservice endpoint (called server-side only) |
+| `PORT` | ml-service | Server port (Railway sets this automatically in production) |
+| `ALLOWED_ORIGINS` | ml-service | Comma-separated CORS origins; defaults to localhost for local dev, set to your Vercel URL in production |
 
-> **Never commit any `.env` file.** The `.env.example` file is the only env file that belongs in the repo.
+> **Never commit `.env`.** The only env file that belongs in the repo is `.env.example`.
 
 ## Feature priorities
 
