@@ -1,10 +1,5 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
-
-const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-);
+import { createUserClient } from "../_shared/supabase.ts";
 
 // Simple profanity list — expand as needed.
 const BANNED_WORDS = ["spam", "scam"];
@@ -22,10 +17,12 @@ Deno.serve(async (req: Request) => {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) return new Response("Unauthorized", { status: 401 });
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser(
+  const supabase = createUserClient(req);
+
+  const { error: authError } = await supabase.auth.getUser(
     authHeader.replace("Bearer ", ""),
   );
-  if (authError || !user) return new Response("Unauthorized", { status: 401 });
+  if (authError) return new Response("Unauthorized", { status: 401 });
 
   const { transaction_id, ratings, body } = await req.json() as {
     transaction_id: string;
@@ -56,16 +53,12 @@ Deno.serve(async (req: Request) => {
   // Confirm the transaction is completed and belongs to this customer.
   const { data: tx, error: txError } = await supabase
     .from("transactions")
-    .select("id, customer_id, completed_at")
+    .select("id, completed_at")
     .eq("id", transaction_id)
     .single();
 
   if (txError || !tx) {
     return new Response(JSON.stringify({ error: "Transaction not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
-  }
-
-  if (tx.customer_id !== user.id) {
-    return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { "Content-Type": "application/json" } });
   }
 
   if (!tx.completed_at) {

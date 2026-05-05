@@ -246,13 +246,13 @@ Deno.test("submit-review — returns 404 for non-existent transaction", async ()
 });
 
 
-Deno.test("submit-review — returns 403 when customer reviews someone else's transaction", async () => {
+Deno.test("submit-review — returns 404 when customer reviews someone else's transaction", async () => {
  const { userId: customerId } = await signUp(`sr_owner_${ts}@example.com`);
  const { jwt: otherJwt } = await signUp(`sr_other_${ts}@example.com`);
  const { userId: freelancerId } = await signUpAsFreelancer(`sr_free_${ts}@example.com`);
  const txId = await createCompletedTransaction(customerId, freelancerId);
  const res = await post(otherJwt, { transaction_id: txId, ratings: VALID_RATINGS, body: VALID_BODY });
- assertEquals(res.status, 403);
+ assertEquals(res.status, 404);
  const data = await res.json();
  assertExists(data.error);
 });

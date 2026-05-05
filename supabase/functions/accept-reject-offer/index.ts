@@ -1,7 +1,8 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createUserClient } from "../_shared/supabase.ts";
 
-const supabase = createClient(
+const serviceClient = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
@@ -14,7 +15,9 @@ Deno.serve(async (req: Request) => {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) return new Response("Unauthorized", { status: 401 });
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser(
+  const userClient = createUserClient(req);
+
+  const { data: { user }, error: authError } = await userClient.auth.getUser(
     authHeader.replace("Bearer ", ""),
   );
   if (authError || !user) return new Response("Unauthorized", { status: 401 });
@@ -29,7 +32,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // Fetch the offer and verify the caller is the freelancer.
-  const { data: offer, error: offerError } = await supabase
+  const { data: offer, error: offerError } = await userClient
     .from("offers")
     .select("*")
     .eq("id", offer_id)
@@ -50,7 +53,7 @@ Deno.serve(async (req: Request) => {
   const newStatus = action === "accept" ? "active" : "rejected";
 
   // Update offer status.
-  const { error: updateError } = await supabase
+  const { error: updateError } = await userClient
     .from("offers")
     .update({ status: newStatus })
     .eq("id", offer_id);
@@ -59,7 +62,7 @@ Deno.serve(async (req: Request) => {
   // If accepted, create the transaction record atomically.
   let transaction = null;
   if (action === "accept") {
-    const { data: tx, error: txError } = await supabase
+    const { data: tx, error: txError } = await serviceClient
       .from("transactions")
       .insert({ offer_id, final_price: offer.amount })
       .select()
