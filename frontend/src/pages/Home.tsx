@@ -1,22 +1,57 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, Filter } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
-import { LISTINGS, PRICE_DISTRIBUTION } from '../data/mockData';
+import { PRICE_DISTRIBUTION } from '../data/mockData';
 import { PriceChart } from '../components/PriceChart';
 import { ListingCard } from '../components/ListingCard';
+import { supabase } from '../lib/supabaseClient';
+import type { Listing } from '../types';
 
 export const HomePage = () => {
   const [search, setSearch] = useState('');
   const [activeRange, setActiveRange] = useState<string | null>(null);
+  const [listings, setListings] = useState<Listing[]>([]);
+
+  useEffect(() => {
+    const fetchListings = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-listings', {
+          method: 'GET',
+        });
+        if (error) throw error;
+        if (data && Array.isArray(data)) {
+          const randomColors = ['bg-vibrant-coral', 'bg-rosy-copper', 'bg-white'];
+          const dbListings: Listing[] = data.map((item: any) => ({
+            id: item.id,
+            name: item.users?.business_name || item.title || 'Unknown Talent',
+            role: item.title || item.categories?.name || 'Freelancer',
+            category: item.categories?.name || item.category_id || 'general',
+            price: item.pricing_models?.[0]?.base_price || 0,
+            rating: 5.0,
+            reviews: 0,
+            location: item.users?.service_area || item.users?.zip_code || 'Remote',
+            tags: item.categories?.name ? [item.categories.name] : [],
+            color: randomColors[Math.floor(Math.random() * randomColors.length)],
+            completedJobs: 0,
+          }));
+          setListings(dbListings);
+        }
+      } catch (err) {
+        console.error('Error fetching database listings:', err);
+      }
+    };
+
+    fetchListings();
+  }, []);
 
   const filteredListings = useMemo(() => {
-    return LISTINGS.filter(l =>
+    return listings.filter(l =>
       l.name.toLowerCase().includes(search.toLowerCase()) ||
       l.role.toLowerCase().includes(search.toLowerCase()) ||
       l.tags.some(t => t.toLowerCase().includes(search.toLowerCase()))
     );
-  }, [search]);
+  }, [search, listings]);
 
   return (
     <main className="flex-1 max-w-7xl mx-auto w-full px-8 py-20">

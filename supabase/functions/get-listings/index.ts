@@ -1,5 +1,5 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
-import { createUserClient, corsHeaders } from "../_shared/supabase.ts";
+import { createServiceClient, corsHeaders } from "../_shared/supabase.ts";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabase = createUserClient(req);
+    const supabase = createServiceClient();
     const url = new URL(req.url);
     const id = url.searchParams.get("id");
     const freelancerId = url.searchParams.get("freelancer_id");
@@ -35,7 +35,14 @@ Deno.serve(async (req) => {
       *,
       pricing_models (*),
       categories (name, slug),
-      users!listings_freelancer_id_fkey (business_name, avatar_url, summary)
+      users!listings_freelancer_id_fkey (
+        business_name,
+        avatar_url,
+        summary,
+        service_area,
+        zip_code,
+        created_at
+      )
     `;
 
     // Single listing by ID

@@ -1,14 +1,23 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Star, MapPin, Clock, Briefcase, BarChart2, CheckCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
-import { FREELANCER_PROFILES, getPricingReport } from '../data/mockData';
-import { LISTINGS } from '../data/mockData';
+import { getPricingReport } from '../data/mockData';
 import { PricingReportModal } from '../components/PricingReportModal';
 import { OfferModal } from '../components/OfferModal';
 import { useAuth } from '../hooks/useAuth';
 import { CustomerUser } from '../models/users/UserSubclasses';
+import { supabase } from '../lib/supabaseClient';
+import type { Listing, PricingModel } from '../types';
+
+interface ProfileDetails {
+  bio: string;
+  pricingModels: PricingModel[];
+  responseTime: string;
+  memberSince: string;
+  portfolioItems: Array<{ emoji: string; title: string; description: string }>;
+}
 
 export const FreelancerProfile = () => {
   const { id } = useParams<{ id: string }>();
@@ -16,14 +25,86 @@ export const FreelancerProfile = () => {
   const { user } = useAuth();
   const [reportOpen, setReportOpen] = useState(false);
   const [offerOpen, setOfferOpen] = useState(false);
+  const [listing, setListing] = useState<Listing | null>(null);
+  const [profile, setProfile] = useState<ProfileDetails | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const listing = LISTINGS.find(l => l.id === Number(id));
-  if (!listing) return null;
+  useEffect(() => {
+    const fetchListing = async () => {
+      if (!id) return;
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke(`get-listings?id=${encodeURIComponent(id)}`, {
+          method: 'GET',
+        });
+        if (error) throw error;
+        const item = data ?? null;
 
-  const profile = FREELANCER_PROFILES[listing.id];
+        if (!item) {
+          setListing(null);
+          setProfile(null);
+          return;
+        }
+
+        const colors = ['bg-vibrant-coral', 'bg-rosy-copper', 'bg-white'];
+        const mappedListing: Listing = {
+          id: item.id,
+          name: item.users?.business_name || item.title || 'Unknown Talent',
+          role: item.title || item.categories?.name || 'Freelancer',
+          category: item.categories?.name || item.category_id || 'general',
+          price: item.pricing_models?.[0]?.base_price || 0,
+          rating: 5.0,
+          reviews: 0,
+          location: item.users?.service_area || item.users?.zip_code || 'Remote',
+          tags: item.categories?.name ? [item.categories.name] : [],
+          color: colors[Math.floor(Math.random() * colors.length)],
+          completedJobs: 0,
+        };
+
+        const pricingModels: PricingModel[] = (item.pricing_models ?? []).map((model: any) => ({
+          type: model.strategy_type,
+          price: model.base_price,
+          unit: model.unit || (model.strategy_type === 'hourly' ? '/hr' : ''),
+          description: model.strategy_type === 'hourly'
+            ? 'Flexible hourly engagement for iterative work.'
+            : model.strategy_type === 'project'
+            ? 'Project-based pricing for clear deliverables.'
+            : 'Fixed pricing for defined scope.'
+        }));
+
+        const createdAt = item.users?.created_at ? new Date(item.users.created_at) : null;
+        const profileDetails: ProfileDetails = {
+          bio: item.users?.summary || item.description || 'Freelancer profile details coming soon.',
+          pricingModels,
+          responseTime: 'within 24 hours',
+          memberSince: createdAt ? createdAt.getFullYear().toString() : '2024',
+          portfolioItems: [
+            {
+              emoji: '📌',
+              title: 'Project Highlights',
+              description: item.description || 'Project details will be shared after first contact.',
+            },
+          ],
+        };
+
+        setListing(mappedListing);
+        setProfile(profileDetails);
+      } catch (err) {
+        console.error('Error loading freelancer listing:', err);
+        setListing(null);
+        setProfile(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchListing();
+  }, [id]);
+
+  if (loading) return null;
+  if (!listing || !profile) return null;
+
   const report = getPricingReport(listing);
-
-  if (!profile) return null;
 
   return (
     <main className="flex-1 max-w-7xl mx-auto w-full px-8 py-20">

@@ -1,7 +1,7 @@
 // ── Listing (card on home page) ─────────────────────────────────────────────
 
 export interface Listing {
-  id: number;
+  id: string | number;
   name: string;
   role: string;
   category: string;

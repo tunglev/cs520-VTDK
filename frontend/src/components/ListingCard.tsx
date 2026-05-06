@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
 import { Star, MapPin, ArrowRight } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { LISTINGS } from '../data/mockData';
+import type { Listing } from '../types';
 
 interface ListingCardProps {
-  listing: typeof LISTINGS[0];
+  listing: Listing;
 }
 
 export const ListingCard = ({ listing }: ListingCardProps) => (
