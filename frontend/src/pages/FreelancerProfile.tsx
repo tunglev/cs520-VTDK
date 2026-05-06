@@ -6,11 +6,16 @@ import { cn } from '../lib/utils';
 import { FREELANCER_PROFILES, getPricingReport } from '../data/mockData';
 import { LISTINGS } from '../data/mockData';
 import { PricingReportModal } from '../components/PricingReportModal';
+import { OfferModal } from '../components/OfferModal';
+import { useAuth } from '../hooks/useAuth';
+import { CustomerUser } from '../models/users/UserSubclasses';
 
 export const FreelancerProfile = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [reportOpen, setReportOpen] = useState(false);
+  const [offerOpen, setOfferOpen] = useState(false);
 
   const listing = LISTINGS.find(l => l.id === Number(id));
   if (!listing) return null;
@@ -117,6 +122,22 @@ export const FreelancerProfile = () => {
           {/* ── Right column ─────────────────────────────────────── */}
           <div className="space-y-6">
 
+            {/* Make an Offer CTA */}
+            {user instanceof CustomerUser && (
+              <div className="border-4 border-black bg-white shadow-brutal p-6">
+                <h2 className="font-display text-2xl uppercase tracking-tighter mb-2">Ready to work?</h2>
+                <p className="font-mono text-xs opacity-70 mb-6 leading-relaxed">
+                  Propose a custom rate and scope. The freelancer can then accept, decline, or counter.
+                </p>
+                <button
+                  onClick={() => setOfferOpen(true)}
+                  className="w-full py-4 bg-vibrant-coral text-white font-display uppercase text-lg border-2 border-black hover:translate-y-1 hover:shadow-none transition-all shadow-brutal-sm"
+                >
+                  Make an Offer
+                </button>
+              </div>
+            )}
+
             {/* Pricing report CTA */}
             <div className="bg-shadow-grey text-white border-4 border-black shadow-brutal p-6">
               <div className="font-mono text-[10px] uppercase opacity-60 mb-2">Market Comparator</div>
@@ -199,6 +220,14 @@ export const FreelancerProfile = () => {
           report={report}
           listing={listing}
           onClose={() => setReportOpen(false)}
+        />
+      )}
+
+      {offerOpen && (
+        <OfferModal
+          listing={listing}
+          user={user}
+          onClose={() => setOfferOpen(false)}
         />
       )}
     </main>
