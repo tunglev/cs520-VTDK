@@ -12,6 +12,7 @@ export default defineConfig(({mode}) => {
       // Remap canonical names from root .env to the VITE_ names the app expects.
       'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(env.SUPABASE_URL),
       'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.SUPABASE_ANON_KEY),
+      'import.meta.env.VITE_ML_SERVICE_URL': JSON.stringify(env.ML_SERVICE_URL),
     },
     resolve: {
       alias: {
