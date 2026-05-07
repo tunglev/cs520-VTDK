@@ -6,3 +6,7 @@ __pycache__/
 .venv/
 ml-service/app/trained_models/*.pkl
 .vscode
+
+.DS_Store
+ml-service/.DS_Store
+supabase/.DS_Store

@@ -8,10 +8,13 @@ import { FreelancerProfile } from './pages/FreelancerProfile';
 import { UserProfile } from './pages/UserProfile';
 import { FreelancerDashboard } from './pages/FreelancerDashboard';
 import { supabase } from './lib/supabaseClient';
+import { useInactivityLogout } from './hooks/useInactivityLogout';
 
 export default function App() {
   const [user, setUser] = useState<any | null>(null);
   const navigate = useNavigate();
+
+  useInactivityLogout();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
