@@ -5,6 +5,8 @@ Uses a Hugging Face sentence-transformer to embed the service description
 and the category name, then computes cosine similarity. A threshold of
 0.35 is used to determine a match (tunable).
 """
+from __future__ import annotations
+
 from fastapi import APIRouter
 from sentence_transformers import SentenceTransformer, util
 
