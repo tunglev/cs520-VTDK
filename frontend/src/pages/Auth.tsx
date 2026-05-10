@@ -1,10 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { MOCK_USERS } from '../data/mockData';
 import { supabase } from '../lib/supabaseClient';
-import type { User } from '../types';
 
 interface AuthPageProps {
-  onLoginSuccess: (user: User) => void;
+  onLoginSuccess: (user: any) => void;
 }
 
 export const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
@@ -35,11 +34,12 @@ export const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
 
     if (isLogin) {
       // Real Supabase login
-      const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
       if (err) {
         setError(err.message);
+      } else if (data.user) {
+        onLoginSuccess(data.user);
       }
-      // onAuthStateChange in App.tsx will detect the session and call onLoginSuccess
     } else {
       if (!isOnboarding) {
         if (!name || !email || !password) {
