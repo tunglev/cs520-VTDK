@@ -9,6 +9,7 @@ import { UserProfile } from './pages/UserProfile';
 import { FreelancerDashboard } from './pages/FreelancerDashboard';
 import { supabase } from './lib/supabaseClient';
 import { useInactivityLogout } from './hooks/useInactivityLogout';
+import { Spinner } from './components/Spinner';
 
 export default function App() {
   const [user, setUser] = useState<any | null>(null);
@@ -91,7 +92,7 @@ export default function App() {
         <Route
           path="/dashboard"
           element={
-            authLoading ? null : user?.role === 'freelancer'
+            authLoading ? <Spinner /> : user?.role === 'freelancer'
               ? (
                 <FreelancerDashboard
                   user={user}
@@ -105,7 +106,7 @@ export default function App() {
         <Route
           path="/profile"
           element={
-            authLoading ? null : user
+            authLoading ? <Spinner /> : user
               ? (
                 <UserProfile
                   user={user}
