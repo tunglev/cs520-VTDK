@@ -12,6 +12,7 @@ import { useInactivityLogout } from './hooks/useInactivityLogout';
 
 export default function App() {
   const [user, setUser] = useState<any | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const navigate = useNavigate();
 
   useInactivityLogout();
@@ -19,12 +20,12 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) setUser(mapSupabaseUser(session.user));
+      setAuthLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser(mapSupabaseUser(session.user));
-        navigate('/');
       } else {
         setUser(null);
       }
@@ -90,7 +91,7 @@ export default function App() {
         <Route
           path="/dashboard"
           element={
-            user?.role === 'freelancer'
+            authLoading ? null : user?.role === 'freelancer'
               ? (
                 <FreelancerDashboard
                   user={user}
@@ -104,7 +105,7 @@ export default function App() {
         <Route
           path="/profile"
           element={
-            user
+            authLoading ? null : user
               ? (
                 <UserProfile
                   user={user}
