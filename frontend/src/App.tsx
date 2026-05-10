@@ -21,10 +21,10 @@ export default function App() {
       if (session?.user) setUser(mapSupabaseUser(session.user));
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         setUser(mapSupabaseUser(session.user));
-        navigate('/');
+        if (event === 'SIGNED_IN') navigate('/');
       } else {
         setUser(null);
       }
@@ -33,8 +33,8 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleLoginSuccess = (userData: any) => {
-    setUser(userData);
+  const handleLoginSuccess = (authUser: any) => {
+    setUser(mapSupabaseUser(authUser));
     navigate('/');
   };
 
