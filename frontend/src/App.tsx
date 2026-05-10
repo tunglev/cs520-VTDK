@@ -9,9 +9,11 @@ import { UserProfile } from './pages/UserProfile';
 import { FreelancerDashboard } from './pages/FreelancerDashboard';
 import { supabase } from './lib/supabaseClient';
 import { useInactivityLogout } from './hooks/useInactivityLogout';
+import { Spinner } from './components/Spinner';
 
 export default function App() {
   const [user, setUser] = useState<any | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const navigate = useNavigate();
 
   useInactivityLogout();
@@ -19,6 +21,7 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) setUser(mapSupabaseUser(session.user));
+      setAuthLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -90,7 +93,7 @@ export default function App() {
         <Route
           path="/dashboard"
           element={
-            user?.role === 'freelancer'
+            authLoading ? <Spinner /> : user?.role === 'freelancer'
               ? (
                 <FreelancerDashboard
                   user={user}
@@ -104,7 +107,7 @@ export default function App() {
         <Route
           path="/profile"
           element={
-            user
+            authLoading ? <Spinner /> : user
               ? (
                 <UserProfile
                   user={user}
