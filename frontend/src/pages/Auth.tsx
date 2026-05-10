@@ -153,6 +153,13 @@ export const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
               </button>
             </div>
           </form>
+          <button
+            type="button"
+            onClick={() => { setError(''); setIsOnboarding(false); }}
+            className="mt-4 w-full py-4 bg-white text-black font-display uppercase border-2 border-black shadow-brutal-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
+          >
+            Back
+          </button>
         </div>
       </div>
     );
@@ -186,6 +193,10 @@ export const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
             const exists = MOCK_USERS.some(u => u.email === email || u.username === email);
             if (exists) {
               setError('Email or username already in use.');
+              return;
+            }
+            if (password.length < 6) {
+              setError('Password must be at least 6 characters.');
               return;
             }
             setIsOnboarding(true);
