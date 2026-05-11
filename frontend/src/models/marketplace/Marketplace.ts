@@ -139,6 +139,7 @@ export class Offer {
       body: { offer_id: this.id, action: 'accept' },
     });
     if (error) throw error;
+    if (data.error) throw new Error(JSON.stringify(data));
     this.status = 'active';
     return data;
   }
@@ -148,6 +149,7 @@ export class Offer {
       body: { offer_id: this.id, action: 'reject' },
     });
     if (error) throw error;
+    if (data.error) throw new Error(JSON.stringify(data));
     this.status = 'rejected';
     return data;
   }
@@ -158,6 +160,7 @@ export class Offer {
       body: { offer_id: this.id, amount: newAmount },
     });
     if (error) throw error;
+    if (data.error) throw new Error(JSON.stringify(data));
     
     // Update local state based on response
     this.amount = data.amount;

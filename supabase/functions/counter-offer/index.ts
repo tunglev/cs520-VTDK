@@ -43,18 +43,24 @@ Deno.serve(async (req: Request) => {
 
   // Caller must be participant
   if (offer.freelancer_id !== user.id && offer.customer_id !== user.id) {
-    return new Response(JSON.stringify({ error: "Forbidden: Not a participant" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "Forbidden: Not a participant", debug: { freelancer: offer.freelancer_id, customer: offer.customer_id, user: user.id } }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
   if (offer.status !== "pending") {
     return new Response(JSON.stringify({ error: `Cannot counter an offer that is already ${offer.status}` }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  const role = offer.freelancer_id === user.id ? 'freelancer' : 'customer';
+  let role = offer.freelancer_id === user.id ? 'freelancer' : 'customer';
+
+  // If the user is testing on their own listing (they are both customer and freelancer),
+  // assume they are acting as the role that DID NOT propose the current amount.
+  if (offer.freelancer_id === offer.customer_id && offer.customer_id === user.id) {
+    role = offer.proposed_by === 'freelancer' ? 'customer' : 'freelancer';
+  }
 
   // Cannot counter if you are the one who proposed it last
   if (offer.proposed_by === role) {
-    return new Response(JSON.stringify({ error: "Forbidden: Cannot counter your own proposal. Wait for the other party to respond." }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "Forbidden: Cannot counter your own proposal. Wait for the other party to respond.", debug: { role, proposed_by: offer.proposed_by, freelancer_id: offer.freelancer_id, user_id: user.id } }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
   // Update offer with new amount and toggle proposed_by
@@ -67,7 +73,9 @@ Deno.serve(async (req: Request) => {
     })
     .eq("id", offer_id);
 
-  if (updateError) throw updateError;
+  if (updateError) {
+    return new Response(JSON.stringify({ error: "Update Error", details: updateError }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
 
   return new Response(
     JSON.stringify({ success: true, amount, proposed_by: role }),

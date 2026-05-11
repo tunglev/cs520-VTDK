@@ -49,17 +49,24 @@ Deno.serve(async (req: Request) => {
 
   // The caller must be a participant in the offer
   if (offer.freelancer_id !== user.id && offer.customer_id !== user.id) {
-    return new Response(JSON.stringify({ error: "Forbidden: Not a participant" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "Forbidden: Not a participant", debug: { freelancer: offer.freelancer_id, customer: offer.customer_id, user: user.id } }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
   // The caller cannot accept/reject their own proposal
-  const role = offer.freelancer_id === user.id ? 'freelancer' : 'customer';
+  let role = offer.freelancer_id === user.id ? 'freelancer' : 'customer';
+  
+  // If the user is testing on their own listing (they are both customer and freelancer),
+  // assume they are acting as the role that DID NOT propose the current amount.
+  if (offer.freelancer_id === offer.customer_id && offer.customer_id === user.id) {
+    role = offer.proposed_by === 'freelancer' ? 'customer' : 'freelancer';
+  }
+
   if (offer.proposed_by === role) {
-    return new Response(JSON.stringify({ error: "Forbidden: Cannot respond to your own proposal" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "Forbidden: Cannot respond to your own proposal", debug: { role, proposed_by: offer.proposed_by } }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
   if (offer.status !== "pending") {
-    return new Response(JSON.stringify({ error: `Offer is already ${offer.status}` }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: `Offer is already ${offer.status}` }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
   const newStatus = action === "accept" ? "active" : "rejected";
@@ -69,7 +76,10 @@ Deno.serve(async (req: Request) => {
     .from("offers")
     .update({ status: newStatus })
     .eq("id", offer_id);
-  if (updateError) throw updateError;
+  
+  if (updateError) {
+    return new Response(JSON.stringify({ error: "Update fails", details: updateError }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
 
   // If accepted, create the transaction record atomically.
   let transaction = null;
