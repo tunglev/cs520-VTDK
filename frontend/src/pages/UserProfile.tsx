@@ -5,8 +5,11 @@ interface UserProfileProps {
   onRoleChange: (role: string, updates?: Record<string, unknown>) => void;
 }
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { Offer, Transaction } from '../models/marketplace/Marketplace';
+import { cn } from '../lib/utils';
+import { OfferCard } from '../components/OfferCard';
 
 export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange }: UserProfileProps) => {
   const [isEnrolling, setIsEnrolling] = useState(false);
@@ -18,6 +21,88 @@ export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange }: U
   const isFreelancer = user.role?.toLowerCase() === 'freelancer';
   const hasFreelancerProfile = user.hourlyRate != null && user.skills?.length > 0;
   const hasFreelancerEnrollment = Boolean(user.freelancerEnrolled) || hasFreelancerProfile;
+  const [offerHistory, setOfferHistory] = useState<Offer[]>([]);
+  const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState('');
+
+  useEffect(() => {
+    const loadHistory = async () => {
+      if (!user.id || isFreelancer) {
+        setOfferHistory([]);
+        setTransactionHistory([]);
+        setHistoryError('');
+        setHistoryLoading(false);
+        return;
+      }
+
+      setHistoryLoading(true);
+      setHistoryError('');
+
+      try {
+        const [{ data: offerRows, error: offerError }, { data: transactionRows, error: transactionError }] = await Promise.all([
+          supabase
+            .from('offers')
+            .select('*, listings(title)')
+            .eq('customer_id', user.id)
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('transactions')
+            .select('*')
+            .eq('customer_id', user.id)
+            .order('completed_at', { ascending: false }),
+        ]);
+
+        if (offerError) throw offerError;
+        if (transactionError) throw transactionError;
+
+        setOfferHistory((offerRows ?? []).map((row: Record<string, unknown>) => Offer.fromRow(row)));
+        setTransactionHistory((transactionRows ?? []).map((row: Record<string, unknown>) => Transaction.fromRow(row)));
+      } catch (err: any) {
+        setHistoryError(err.message ?? 'Failed to load your offer history');
+      } finally {
+        setHistoryLoading(false);
+      }
+    };
+
+    loadHistory();
+  }, [user.id, isFreelancer]);
+
+  const pendingOfferCount = offerHistory.filter(offer => offer.status === 'pending').length;
+  const completedTransactionCount = transactionHistory.length;
+
+  const handleAccept = async (offer: Offer) => {
+    try {
+      await offer.accept();
+      // Remove from pending offers since it's now active/completed
+      setOfferHistory(prev => prev.filter(o => o.id !== offer.id));
+    } catch (e: any) { 
+      console.error(e); 
+      setError(e.message || 'Failed to accept offer');
+    }
+  };
+
+  const handleReject = async (offer: Offer) => {
+    try {
+      await offer.reject();
+      // Remove from pending offers
+      setOfferHistory(prev => prev.filter(o => o.id !== offer.id));
+    } catch (e: any) { 
+      console.error(e); 
+      setError(e.message || 'Failed to reject offer');
+    }
+  };
+
+  const handleCounter = async (offer: Offer, newAmount: number) => {
+    try {
+      await offer.counter(newAmount);
+      // Wait for Supabase Realtime to update the record automatically, 
+      // or optionally re-fetch local state
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
+  };
 
   const handleRoleSwitch = async (newRole: 'customer' | 'freelancer') => {
     if (newRole === 'freelancer' && !hasFreelancerEnrollment && !isEnrolling) {
@@ -144,6 +229,87 @@ export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange }: U
             )}
           </div>
         </div>
+
+        {!isFreelancer && (
+          <div className="border-4 border-black p-6 bg-white shadow-brutal-sm">
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
+              <div>
+                <h2 className="font-display uppercase text-2xl tracking-tighter">Offer History</h2>
+                <p className="font-mono text-xs uppercase opacity-60 mt-2">
+                  Counter offers appear here as new pending offers.
+                </p>
+              </div>
+              <div className="flex gap-4 font-mono text-[10px] uppercase tracking-widest">
+                <div className="border-2 border-black px-3 py-2">
+                  Pending {pendingOfferCount}
+                </div>
+                <div className="border-2 border-black px-3 py-2">
+                  Completed {completedTransactionCount}
+                </div>
+              </div>
+            </div>
+
+            {historyLoading ? (
+              <div className="font-mono text-sm uppercase opacity-40 animate-pulse">Loading history...</div>
+            ) : historyError ? (
+              <div className="font-mono text-xs uppercase text-vibrant-coral border-2 border-vibrant-coral px-4 py-3">
+                {historyError}
+              </div>
+            ) : (
+              <div className="grid gap-6 lg:grid-cols-2">
+                <div className="space-y-3">
+                  <h3 className="font-mono text-[10px] uppercase tracking-widest opacity-60">Offers</h3>
+                  {offerHistory.length === 0 ? (
+                    <div className="border-2 border-dashed border-black/20 p-6 text-center font-mono text-xs uppercase opacity-50">
+                      No offers yet
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {offerHistory.map((offer) => (
+                        <OfferCard
+                          key={offer.id}
+                          offer={offer}
+                          userRole="customer"
+                          onAccept={handleAccept}
+                          onReject={handleReject}
+                          onCounter={handleCounter}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="font-mono text-[10px] uppercase tracking-widest opacity-60">Complete</h3>
+                  {transactionHistory.length === 0 ? (
+                    <div className="border-2 border-dashed border-black/20 p-6 text-center font-mono text-xs uppercase opacity-50">
+                      No completed transactions yet
+                    </div>
+                  ) : (
+                    transactionHistory.map((transaction) => (
+                      <div key={transaction.id} className="border-2 border-black p-4 bg-white">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="font-display uppercase text-lg tracking-tighter">${transaction.finalPrice}</div>
+                            <div className="font-mono text-[10px] uppercase opacity-50 mt-1">
+                              Completed {transaction.completedAt ? new Date(transaction.completedAt).toLocaleDateString() : 'Recently'}
+                            </div>
+                            <div className="font-mono text-[10px] uppercase opacity-60 mt-2">
+                              Offer {transaction.offerId.slice(0, 8)}
+                            </div>
+                          </div>
+                          <span className="px-2 py-1 border border-black font-mono text-[10px] uppercase bg-bone">
+                            complete
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mt-8 border-4 border-black p-6 bg-shadow-grey text-white">
           <h2 className="font-display uppercase text-lg tracking-widest mb-4">Mode Switch</h2>
