@@ -1,11 +1,5 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
 import { createUserClient, corsHeaders } from "../_shared/supabase.ts";
-
-const serviceClient = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-);
 
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight request
@@ -27,16 +21,16 @@ Deno.serve(async (req: Request) => {
   );
   if (authError || !user) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
-  const { offer_id, action } = await req.json() as { offer_id: string; action: "accept" | "reject" };
+  const { offer_id, amount } = await req.json() as { offer_id: string; amount: number };
 
-  if (!offer_id || !["accept", "reject"].includes(action)) {
-    return new Response(JSON.stringify({ error: "offer_id and action (accept|reject) are required" }), {
+  if (!offer_id || typeof amount !== 'number' || amount <= 0) {
+    return new Response(JSON.stringify({ error: "offer_id and a valid positive amount are required" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  // Fetch the offer and verify the caller is either the customer or the freelancer.
+  // Fetch the offer
   const { data: offer, error: offerError } = await userClient
     .from("offers")
     .select("*")
@@ -47,44 +41,36 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: "Offer not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  // The caller must be a participant in the offer
+  // Caller must be participant
   if (offer.freelancer_id !== user.id && offer.customer_id !== user.id) {
     return new Response(JSON.stringify({ error: "Forbidden: Not a participant" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  // The caller cannot accept/reject their own proposal
-  const role = offer.freelancer_id === user.id ? 'freelancer' : 'customer';
-  if (offer.proposed_by === role) {
-    return new Response(JSON.stringify({ error: "Forbidden: Cannot respond to your own proposal" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
-
   if (offer.status !== "pending") {
-    return new Response(JSON.stringify({ error: `Offer is already ${offer.status}` }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: `Cannot counter an offer that is already ${offer.status}` }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  const newStatus = action === "accept" ? "active" : "rejected";
+  const role = offer.freelancer_id === user.id ? 'freelancer' : 'customer';
 
-  // Update offer status.
+  // Cannot counter if you are the one who proposed it last
+  if (offer.proposed_by === role) {
+    return new Response(JSON.stringify({ error: "Forbidden: Cannot counter your own proposal. Wait for the other party to respond." }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
+  // Update offer with new amount and toggle proposed_by
   const { error: updateError } = await userClient
     .from("offers")
-    .update({ status: newStatus })
+    .update({ 
+      amount: amount,
+      proposed_by: role,
+      status: 'pending' // ensure it remains pending
+    })
     .eq("id", offer_id);
+
   if (updateError) throw updateError;
 
-  // If accepted, create the transaction record atomically.
-  let transaction = null;
-  if (action === "accept") {
-    const { data: tx, error: txError } = await serviceClient
-      .from("transactions")
-      .insert({ offer_id, final_price: offer.amount })
-      .select()
-      .single();
-    if (txError) throw txError;
-    transaction = tx;
-  }
-
   return new Response(
-    JSON.stringify({ success: true, status: newStatus, transaction }),
+    JSON.stringify({ success: true, amount, proposed_by: role }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );
 });
