@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Star, MapPin, Clock, Briefcase, BarChart2, CheckCircle } from 'lucide-react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Star, MapPin, Clock, Briefcase, BarChart2, CheckCircle, Eye } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 import { getPricingReport } from '../data/mockData';
@@ -22,6 +22,8 @@ interface ProfileDetails {
 export const FreelancerProfile = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isPreview = searchParams.get('preview') === 'true';
   const { user } = useAuth();
   const [reportOpen, setReportOpen] = useState(false);
   const [offerOpen, setOfferOpen] = useState(false);
@@ -107,6 +109,22 @@ export const FreelancerProfile = () => {
   const report = getPricingReport(listing);
 
   return (
+    <>
+      {isPreview && (
+        <div className="w-full bg-shadow-grey text-white border-b-4 border-black px-8 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest">
+            <Eye size={14} />
+            Preview — This is how customers see your listing
+          </div>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest hover:text-vibrant-coral transition-colors group"
+          >
+            <ArrowLeft size={12} className="group-hover:-translate-x-1 transition-transform" />
+            Back to Dashboard
+          </button>
+        </div>
+      )}
     <main className="flex-1 max-w-7xl mx-auto w-full px-8 py-20">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
@@ -115,11 +133,11 @@ export const FreelancerProfile = () => {
       >
         {/* Back nav */}
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => isPreview ? navigate('/dashboard') : navigate(-1)}
           className="flex items-center gap-2 font-mono text-xs uppercase mb-10 hover:text-vibrant-coral transition-colors group"
         >
           <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-          Back to search
+          {isPreview ? 'Back to Dashboard' : 'Back to search'}
         </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
@@ -312,5 +330,6 @@ export const FreelancerProfile = () => {
         />
       )}
     </main>
+    </>
   );
 };

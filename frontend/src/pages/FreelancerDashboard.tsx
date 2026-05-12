@@ -1,6 +1,7 @@
 import { useState, useEffect, type ElementType, type FormEvent } from 'react';
-import { Plus, ToggleLeft, ToggleRight, CheckCircle, XCircle, Clock, DollarSign, Briefcase, TrendingUp } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight, CheckCircle, XCircle, Clock, DollarSign, Briefcase, TrendingUp, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { ServiceListing, Offer } from '../models/marketplace/Marketplace';
 import { cn } from '../lib/utils';
@@ -32,9 +33,11 @@ const StatCard = ({ icon: Icon, label, value, accent }: {
 const ListingCard = ({
   listing,
   onToggle,
+  onView,
 }: {
   listing: ServiceListing;
   onToggle: (l: ServiceListing) => void | Promise<void>;
+  onView: (l: ServiceListing) => void;
 }) => (
   <motion.div
     layout
@@ -53,15 +56,24 @@ const ListingCard = ({
         </div>
         <p className="text-sm opacity-70 mt-2 line-clamp-2">{listing.description}</p>
       </div>
-      <button
-        onClick={() => onToggle(listing)}
-        className="shrink-0 text-black/60 hover:text-black transition-colors"
-        title={listing.isActive ? 'Deactivate' : 'Activate'}
-      >
-        {listing.isActive
-          ? <ToggleRight size={32} className="text-vibrant-coral" />
-          : <ToggleLeft size={32} />}
-      </button>
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          onClick={() => onView(listing)}
+          className="text-black/60 hover:text-black transition-colors"
+          title="Preview listing"
+        >
+          <Eye size={20} />
+        </button>
+        <button
+          onClick={() => onToggle(listing)}
+          className="text-black/60 hover:text-black transition-colors"
+          title={listing.isActive ? 'Deactivate' : 'Activate'}
+        >
+          {listing.isActive
+            ? <ToggleRight size={32} className="text-vibrant-coral" />
+            : <ToggleLeft size={32} />}
+        </button>
+      </div>
     </div>
   </motion.div>
 );
@@ -259,7 +271,10 @@ export const FreelancerDashboard = ({ user, onLogout, onSwitchToClient }: Freela
   const [showNewListing, setShowNewListing] = useState(false);
   const [activeTab, setActiveTab] = useState<'listings' | 'offers'>('listings');
 
+  const navigate = useNavigate();
   const freelancerId = user.id ?? '';
+
+  const handleViewListing = (l: ServiceListing) => navigate(`/freelancer/${l.id}?preview=true`);
 
   const fetchData = async () => {
     if (!freelancerId) return;
@@ -393,7 +408,7 @@ export const FreelancerDashboard = ({ user, onLogout, onSwitchToClient }: Freela
             ) : (
               <motion.div layout className="grid gap-4 md:grid-cols-2">
                 {listings.map(l => (
-                  <ListingCard key={l.id} listing={l} onToggle={handleToggle} />
+                  <ListingCard key={l.id} listing={l} onToggle={handleToggle} onView={handleViewListing} />
                 ))}
               </motion.div>
             )}
