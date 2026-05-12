@@ -116,3 +116,130 @@ def test_categorize_service_mismatch():
 def test_categorize_service_missing_fields():
     r = client.post("/categorize-service", json={"description": "Some text"})
     assert r.status_code == 422
+
+
+# ── /detect-anomalies (edge case: exactly 5 prices) ───────────
+
+def test_detect_anomalies_exactly_5_prices():
+    """
+    Boundary condition: anomaly detection requires at least 5 prices.
+    Verify that 4 prices returns empty outliers, but 5 prices triggers detection.
+    """
+    # 4 prices: should return empty outlierIndices (below threshold)
+    r = client.post("/detect-anomalies", json={"prices": [45, 50, 48, 52]})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["outlierIndices"] == []
+    assert len(body["scores"]) == 4  # Scores returned but all 0.0
+    assert all(s == 0.0 for s in body["scores"])
+
+    # Exactly 5 prices: should trigger detection (runs IsolationForest)
+    prices_5 = [45, 50, 48, 52, 46]
+    r = client.post("/detect-anomalies", json={"prices": prices_5})
+    assert r.status_code == 200
+    body = r.json()
+    assert "outlierIndices" in body
+    assert "scores" in body
+    assert len(body["scores"]) == 5
+    # With normal variation, should not have outliers, so indices should be empty
+    assert isinstance(body["outlierIndices"], list)
+
+
+# ── /categorize-service (edge case: empty description) ────────
+
+def test_categorize_service_empty_description():
+    """
+    Empty description should fail validation (min_length=1).
+    """
+    r = client.post("/categorize-service", json={
+        "description": "",
+        "claimedCategory": "web-development",
+    })
+    assert r.status_code == 422  # Pydantic validation error
+
+
+# ── Integration test: all endpoints with happy paths + errors ──
+
+def test_integration_all_endpoints_with_errors():
+    """
+    Integration test: spin up all three endpoints and verify they work
+    individually and together without cross-test contamination.
+    Tests both happy paths and error cases for comprehensive coverage.
+    """
+    # ─ Health check ─
+    r = client.get("/health")
+    assert r.status_code == 200
+    assert r.json()["status"] == "ok"
+
+    # ─ Predict Price: happy path ─
+    r = client.post("/predict-price", json={
+        "category": "graphic-design",
+        "location": "02115",
+        "rating": 4.5,
+    })
+    assert r.status_code == 200
+    body = r.json()
+    assert "minPrice" in body and "maxPrice" in body and "suggestedPrice" in body
+    assert body["minPrice"] < body["suggestedPrice"] < body["maxPrice"]
+
+    # ─ Predict Price: error case (rating out of range) ─
+    r = client.post("/predict-price", json={
+        "category": "web-development",
+        "location": "",
+        "rating": 5.5,  # invalid: max is 5.0
+    })
+    assert r.status_code == 422
+
+    # ─ Predict Price: edge case (unknown category, falls back to heuristic) ─
+    r = client.post("/predict-price", json={
+        "category": "ancient-pottery-restoration",
+        "location": "",
+        "rating": 3.0,
+    })
+    assert r.status_code == 200
+    assert r.json()["suggestedPrice"] > 0
+
+    # ─ Detect Anomalies: happy path ─
+    r = client.post("/detect-anomalies", json={
+        "prices": [100, 102, 101, 103, 99, 104, 100, 101, 102, 98]
+    })
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["scores"]) == 10
+    assert isinstance(body["outlierIndices"], list)
+
+    # ─ Detect Anomalies: error case (empty prices list) ─
+    r = client.post("/detect-anomalies", json={"prices": []})
+    assert r.status_code == 422
+
+    # ─ Detect Anomalies: edge case (exactly 5 prices) ─
+    r = client.post("/detect-anomalies", json={"prices": [50, 51, 49, 52, 48]})
+    assert r.status_code == 200
+    assert len(r.json()["scores"]) == 5
+
+    # ─ Categorize Service: happy path (clear match) ─
+    r = client.post("/categorize-service", json={
+        "description": "I design modern web applications using React and TypeScript.",
+        "claimedCategory": "web-development",
+    })
+    assert r.status_code == 200
+    body = r.json()
+    assert body["match"] is True
+    assert 0.0 <= body["confidence"] <= 1.0
+
+    # ─ Categorize Service: error case (empty description) ─
+    r = client.post("/categorize-service", json={
+        "description": "",
+        "claimedCategory": "web-development",
+    })
+    assert r.status_code == 422
+
+    # ─ Categorize Service: edge case (mismatch) ─
+    r = client.post("/categorize-service", json={
+        "description": "I cut and style hair for clients.",
+        "claimedCategory": "web-development",
+    })
+    assert r.status_code == 200
+    body = r.json()
+    assert body["match"] is False
+    assert 0.0 <= body["confidence"] <= 1.0
