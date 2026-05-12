@@ -151,8 +151,7 @@ const NewListingModal = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [basePrice, setBasePrice] = useState('');
-  const [strategyType, setStrategyType] = useState<'fixed' | 'hourly' | 'project'>('hourly');
+  const [pricingModels, setPricingModels] = useState<PricingModelRow[]>([{ strategy_type: 'hourly', base_price: 0 }]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -162,6 +161,15 @@ const NewListingModal = ({
       if (data) setCategories(data);
     });
   }, []);
+
+  const addPricingRow = () =>
+    setPricingModels(prev => [...prev, { strategy_type: 'hourly', base_price: 0 }]);
+
+  const removePricingRow = (index: number) =>
+    setPricingModels(prev => prev.filter((_, i) => i !== index));
+
+  const updatePricingRow = (index: number, field: keyof PricingModelRow, value: string | number) =>
+    setPricingModels(prev => prev.map((row, i) => i === index ? { ...row, [field]: value } as PricingModelRow : row));
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault();
@@ -175,8 +183,12 @@ const NewListingModal = ({
         title: title.trim(),
         description: description.trim(),
       };
-      if (basePrice) {
-        body.pricing_models = [{ strategy_type: strategyType, base_price: Number(basePrice) }];
+      const activePricing = pricingModels.filter(pm => pm.base_price > 0);
+      if (activePricing.length > 0) {
+        body.pricing_models = activePricing.map(pm => ({
+          strategy_type: pm.strategy_type,
+          base_price: Number(pm.base_price),
+        }));
       }
       const { error: err } = await supabase.functions.invoke('manage-listing', { body });
       if (err) throw err;
@@ -200,7 +212,7 @@ const NewListingModal = ({
       <motion.form
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="bg-bone border-4 border-black shadow-brutal w-full max-w-md p-8"
+        className="bg-bone border-4 border-black shadow-brutal w-full max-w-md p-8 max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
         onSubmit={handleCreate}
       >
@@ -240,22 +252,51 @@ const NewListingModal = ({
               className="w-full border-2 border-black bg-white px-4 py-3 font-mono text-sm focus:outline-none focus:border-vibrant-coral resize-none"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="font-display uppercase text-[10px] tracking-widest block mb-1">Pricing Type</label>
-              <select value={strategyType} onChange={e => setStrategyType(e.target.value as any)}
-                className="w-full border-2 border-black bg-white px-3 py-3 font-mono text-sm focus:outline-none focus:border-vibrant-coral">
-                <option value="hourly">Hourly</option>
-                <option value="fixed">Fixed</option>
-                <option value="project">Project</option>
-              </select>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="font-display uppercase text-[10px] tracking-widest">Pricing Options</label>
+              <button
+                type="button"
+                onClick={addPricingRow}
+                className="font-mono text-[10px] uppercase text-vibrant-coral hover:underline"
+              >
+                + Add option
+              </button>
             </div>
-            <div>
-              <label className="font-display uppercase text-[10px] tracking-widest block mb-1">Base Price ($)</label>
-              <input type="number" value={basePrice} onChange={e => setBasePrice(e.target.value)}
-                placeholder="e.g. 50"
-                className="w-full border-2 border-black bg-white px-3 py-3 font-mono text-sm focus:outline-none focus:border-vibrant-coral"
-              />
+            <div className="space-y-2">
+              {pricingModels.map((row, i) => (
+                <div key={i} className="flex gap-2 items-center">
+                  <select
+                    value={row.strategy_type}
+                    onChange={e => updatePricingRow(i, 'strategy_type', e.target.value)}
+                    className="flex-1 border-2 border-black bg-white px-3 py-2 font-mono text-sm focus:outline-none focus:border-vibrant-coral"
+                  >
+                    <option value="hourly">Hourly</option>
+                    <option value="fixed">Fixed</option>
+                    <option value="project">Project</option>
+                  </select>
+                  <div className="flex items-center border-2 border-black bg-white">
+                    <span className="px-2 font-mono text-sm opacity-50">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={row.base_price || ''}
+                      onChange={e => updatePricingRow(i, 'base_price', e.target.value)}
+                      className="w-20 py-2 pr-3 font-mono text-sm focus:outline-none"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removePricingRow(i)}
+                    disabled={pricingModels.length === 1}
+                    className="text-rosy-copper/60 hover:text-rosy-copper disabled:opacity-20 transition-colors font-mono text-lg leading-none"
+                    title="Remove pricing option"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         </div>
