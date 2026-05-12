@@ -8,6 +8,7 @@ import { FreelancerProfile } from './pages/FreelancerProfile';
 import { UserProfile } from './pages/UserProfile';
 import { FreelancerDashboard } from './pages/FreelancerDashboard';
 import { TransactionsPage } from './pages/TransactionsPage';
+import { HowItWorksPage } from './pages/HowItWorks';
 import { supabase } from './lib/supabaseClient';
 import { useInactivityLogout } from './hooks/useInactivityLogout';
 import { Spinner } from './components/Spinner';
@@ -121,6 +122,7 @@ export default function App() {
               : <Navigate to="/auth" />
           }
         />
+        <Route path="/how-it-works" element={<HowItWorksPage />} />
         <Route path="*" element={<Navigate to="/" />} />
         <Route
           path="/transactions"
