@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   CheckCircle2,
@@ -146,9 +146,9 @@ const TransactionCard = ({
 };
 
 // ── Main page ─────────────────────────────────────────────────
-const repo = new TransactionRepository();
 
 export const TransactionsPage = ({ user, onBack }: TransactionsPageProps) => {
+  const repo = useMemo(() => new TransactionRepository(), []);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
