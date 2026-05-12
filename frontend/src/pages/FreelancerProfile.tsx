@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Star, MapPin, Clock, Briefcase, BarChart2, CheckCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
+import { getPricingReport } from '../data/mockData';
 import { PricingReportModal } from '../components/PricingReportModal';
 import { OfferModal } from '../components/OfferModal';
 import { useAuth } from '../hooks/useAuth';
@@ -98,8 +99,10 @@ export const FreelancerProfile = () => {
         setListing(mappedListing);
         setProfile(profileDetails);
 
+        const mockReport = getPricingReport(mappedListing);
+
         try {
-          const { data: reportData } = await supabase.functions.invoke('generate-pricing-report', {
+          const { data: reportData, error: reportError } = await supabase.functions.invoke('generate-pricing-report', {
             method: 'POST',
             body: {
               category_id: item.category_id,
@@ -109,30 +112,40 @@ export const FreelancerProfile = () => {
           });
 
           if (reportData && !reportData.error) {
-            const freelancerPrice = mappedListing.price;
-            const avg = reportData.marketAvg ?? 0;
-            const min = reportData.marketMin ?? 0;
-            const max = reportData.marketMax ?? 0;
-            const median = reportData.marketMedian ?? 0;
-            const count = reportData.transactionCount ?? 0;
-            const percentile = avg > 0
-              ? Math.min(100, Math.max(0, Math.round((freelancerPrice / max) * 100)))
-              : 0;
+            const scatterBase = (reportData.scatterData?.length > 0 ? reportData.scatterData : mockReport.scatterData)
+              .map((p: any) => p.name === mappedListing.role ? { ...p, isCurrent: true } : p);
+            const hasCurrentFreelancer = scatterBase.some((p: any) => p.isCurrent);
+            if (!hasCurrentFreelancer) {
+              scatterBase.push({
+                name: mappedListing.name,
+                price: mappedListing.price,
+                rating: mappedListing.rating,
+                reviews: mappedListing.reviews,
+                isCurrent: true,
+              });
+            }
+            const scatterWithCurrent = scatterBase;
+
+            const allPrices = scatterWithCurrent.map((p: any) => p.price).sort((a: number, b: number) => a - b);
+            const below = allPrices.filter((p: number) => p < mappedListing.price).length;
+            const percentile = allPrices.length > 0 ? Math.round((below / allPrices.length) * 100) : mockReport.percentile;
 
             setReport({
-              category: mappedListing.role,
-              marketAvg: avg,
-              marketMedian: median,
-              marketMin: min,
-              marketMax: max,
-              sampleSize: count,
+              ...mockReport,
+              marketAvg: reportData.marketAvg ?? mockReport.marketAvg,
+              marketMedian: reportData.marketMedian ?? mockReport.marketMedian,
+              marketMin: reportData.marketMin ?? mockReport.marketMin,
+              marketMax: reportData.marketMax ?? mockReport.marketMax,
+              sampleSize: reportData.transactionCount ?? mockReport.sampleSize,
+              priceDistribution: reportData.priceDistribution?.length > 0 ? reportData.priceDistribution : mockReport.priceDistribution,
+              scatterData: scatterWithCurrent,
               percentile,
-              priceDistribution: [],
-              scatterData: [],
             });
+          } else {
+            setReport(mockReport);
           }
         } catch {
-          // No pricing data available — report stays null
+          setReport(mockReport);
         }
       } catch (err) {
         console.error('Error loading freelancer listing:', err);
@@ -268,39 +281,31 @@ export const FreelancerProfile = () => {
               <div className="font-display text-xl uppercase tracking-tighter mb-3">
                 Is ${listing.price}/hr a fair rate?
               </div>
-              {report ? (
-                <>
-                  <p className="font-mono text-xs opacity-70 mb-6 leading-relaxed">
-                    See how {listing.name.split(' ')[0]}'s pricing stacks up against {report.sampleSize} completed
-                    transactions in the {listing.role} market.
-                  </p>
-                  <div className="flex items-center justify-between text-xs font-mono uppercase mb-6">
-                    <div>
-                      <div className="opacity-60">Market Avg</div>
-                      <div className="font-bold text-vibrant-coral">${report.marketAvg}/hr</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="opacity-60">Median</div>
-                      <div className="font-bold">${report.marketMedian}/hr</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="opacity-60">This Freelancer</div>
-                      <div className="font-bold">${listing.price}/hr</div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setReportOpen(true)}
-                    className="w-full py-4 bg-vibrant-coral text-white font-display uppercase text-sm border-2 border-white/30 flex items-center justify-center gap-3 hover:bg-rosy-copper transition-colors"
-                  >
-                    <BarChart2 size={16} />
-                    View Full Pricing Report
-                  </button>
-                </>
-              ) : (
-                <p className="font-mono text-xs opacity-70 leading-relaxed">
-                  Not enough market data yet. Pricing insights will appear as more transactions are completed.
-                </p>
-              )}
+              <p className="font-mono text-xs opacity-70 mb-6 leading-relaxed">
+                See how {listing.name.split(' ')[0]}'s pricing stacks up against {report?.sampleSize ?? 0} completed
+                transactions in the {listing.role} market.
+              </p>
+              <div className="flex items-center justify-between text-xs font-mono uppercase mb-6">
+                <div>
+                  <div className="opacity-60">Market Avg</div>
+                  <div className="font-bold text-vibrant-coral">${report?.marketAvg ?? 0}/hr</div>
+                </div>
+                <div className="text-center">
+                  <div className="opacity-60">Median</div>
+                  <div className="font-bold">${report?.marketMedian ?? 0}/hr</div>
+                </div>
+                <div className="text-right">
+                  <div className="opacity-60">This Freelancer</div>
+                  <div className="font-bold">${listing.price}/hr</div>
+                </div>
+              </div>
+              <button
+                onClick={() => setReportOpen(true)}
+                className="w-full py-4 bg-vibrant-coral text-white font-display uppercase text-sm border-2 border-white/30 flex items-center justify-center gap-3 hover:bg-rosy-copper transition-colors"
+              >
+                <BarChart2 size={16} />
+                View Full Pricing Report
+              </button>
             </div>
 
             {/* Pricing models */}

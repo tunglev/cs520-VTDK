@@ -6,12 +6,13 @@ import { PRICE_DISTRIBUTION } from '../data/mockData';
 import { PriceChart } from '../components/PriceChart';
 import { ListingCard } from '../components/ListingCard';
 import { supabase } from '../lib/supabaseClient';
-import type { Listing } from '../types';
+import type { Listing, PriceDistributionBucket } from '../types';
 
 export const HomePage = () => {
   const [search, setSearch] = useState('');
   const [activeRange, setActiveRange] = useState<string | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
+  const [priceDistribution, setPriceDistribution] = useState<PriceDistributionBucket[] | undefined>(undefined);
 
   useEffect(() => {
     const fetchListings = async () => {
@@ -56,6 +57,15 @@ export const HomePage = () => {
     };
 
     fetchListings();
+
+    supabase.functions.invoke('generate-pricing-report', {
+      method: 'POST',
+      body: {},
+    }).then(({ data }) => {
+      if (data?.priceDistribution?.length > 0) {
+        setPriceDistribution(data.priceDistribution);
+      }
+    }).catch(() => {});
   }, []);
 
   const filteredListings = useMemo(() => {
@@ -98,10 +108,10 @@ export const HomePage = () => {
           </div>
         </div>
 
-        <PriceChart activeRange={activeRange} />
+        <PriceChart activeRange={activeRange} data={priceDistribution} />
 
         <div className="mt-4 flex gap-4 overflow-x-auto pb-4">
-          {PRICE_DISTRIBUTION.map(p => (
+          {(priceDistribution ?? PRICE_DISTRIBUTION).map(p => (
             <button
               key={p.range}
               onClick={() => setActiveRange(activeRange === p.range ? null : p.range)}
