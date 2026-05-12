@@ -578,7 +578,7 @@ export const FreelancerDashboard = ({ user, onLogout, onSwitchToClient }: Freela
 
   const handleToggle = async (listing: ServiceListing) => {
     await listing.updateListing({ isActive: !listing.isActive });
-    setListings(prev => prev.map(l => l.id === listing.id ? listing : l));
+    setListings(prev => prev.map(l => l.id === listing.id ? Object.assign(Object.create(Object.getPrototypeOf(l)), l) : l));
   };
 
   const handleAccept = async (offer: Offer) => {
