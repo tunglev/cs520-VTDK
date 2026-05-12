@@ -76,6 +76,11 @@ export class ServiceListing {
     return this;
   }
 
+  async deleteListing(): Promise<void> {
+    const { error } = await supabase.from('listings').delete().eq('id', this.id);
+    if (error) throw error;
+  }
+
   static fromRow(
     row: Record<string, unknown>,
     pricingRow?: Record<string, unknown> | null,

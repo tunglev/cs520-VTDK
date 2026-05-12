@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Star, MapPin, Clock, Briefcase, BarChart2, CheckCircle, Eye } from 'lucide-react';
+import { ArrowLeft, Star, MapPin, Clock, Briefcase, BarChart2, CheckCircle, Eye, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 import { getPricingReport } from '../data/mockData';
 import { PricingReportModal } from '../components/PricingReportModal';
 import { OfferModal } from '../components/OfferModal';
+import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal';
 import { useAuth } from '../hooks/useAuth';
 import { CustomerUser } from '../models/users/UserSubclasses';
 import { supabase } from '../lib/supabaseClient';
 import type { Listing, PricingModel } from '../types';
+import { AnimatePresence } from 'motion/react';
 
 interface ProfileDetails {
   bio: string;
@@ -27,6 +29,8 @@ export const FreelancerProfile = () => {
   const { user } = useAuth();
   const [reportOpen, setReportOpen] = useState(false);
   const [offerOpen, setOfferOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [listing, setListing] = useState<Listing | null>(null);
   const [profile, setProfile] = useState<ProfileDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -102,6 +106,19 @@ export const FreelancerProfile = () => {
 
     fetchListing();
   }, [id]);
+
+  const handleDeleteConfirm = async () => {
+    if (!id) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase.from('listings').delete().eq('id', id);
+      if (error) throw error;
+      navigate('/dashboard');
+    } catch (e) { console.error(e); } finally {
+      setDeleting(false);
+      setDeleteOpen(false);
+    }
+  };
 
   if (loading) return null;
   if (!listing || !profile) return null;
@@ -221,6 +238,22 @@ export const FreelancerProfile = () => {
           {/* ── Right column ─────────────────────────────────────── */}
           <div className="space-y-6">
 
+            {/* Delete Listing CTA (preview mode only) */}
+            {isPreview && (
+              <div className="border-4 border-black bg-white shadow-brutal p-6">
+                <h2 className="font-display text-xl uppercase tracking-tighter mb-2">Manage Listing</h2>
+                <p className="font-mono text-xs opacity-70 mb-5 leading-relaxed">
+                  Permanently remove this listing. This action cannot be undone.
+                </p>
+                <button
+                  onClick={() => setDeleteOpen(true)}
+                  className="w-full py-3 bg-rosy-copper text-white border-2 border-black font-display uppercase text-sm flex items-center justify-center gap-2 shadow-brutal-sm hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"
+                >
+                  <Trash2 size={14} /> Delete Listing
+                </button>
+              </div>
+            )}
+
             {/* Make an Offer CTA */}
             {user instanceof CustomerUser && (
               <div className="border-4 border-black bg-white shadow-brutal p-6">
@@ -329,6 +362,18 @@ export const FreelancerProfile = () => {
           onClose={() => setOfferOpen(false)}
         />
       )}
+
+      <AnimatePresence>
+        {deleteOpen && (
+          <ConfirmDeleteModal
+            title="Delete Listing"
+            message={`Are you sure you want to delete "${listing.name}"? This cannot be undone.`}
+            onConfirm={handleDeleteConfirm}
+            onCancel={() => setDeleteOpen(false)}
+            loading={deleting}
+          />
+        )}
+      </AnimatePresence>
     </main>
     </>
   );

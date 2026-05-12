@@ -1,9 +1,10 @@
 import { useState, useEffect, type ElementType, type FormEvent } from 'react';
-import { Plus, ToggleLeft, ToggleRight, CheckCircle, XCircle, Clock, DollarSign, Briefcase, TrendingUp, Eye } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight, CheckCircle, XCircle, Clock, DollarSign, Briefcase, TrendingUp, Eye, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { ServiceListing, Offer } from '../models/marketplace/Marketplace';
+import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal';
 import { cn } from '../lib/utils';
 
 interface FreelancerDashboardProps {
@@ -34,10 +35,12 @@ const ListingCard = ({
   listing,
   onToggle,
   onView,
+  onDelete,
 }: {
   listing: ServiceListing;
   onToggle: (l: ServiceListing) => void | Promise<void>;
   onView: (l: ServiceListing) => void;
+  onDelete: (l: ServiceListing) => void;
 }) => (
   <motion.div
     layout
@@ -63,6 +66,13 @@ const ListingCard = ({
           title="Preview listing"
         >
           <Eye size={20} />
+        </button>
+        <button
+          onClick={() => onDelete(listing)}
+          className="text-rosy-copper/60 hover:text-rosy-copper transition-colors"
+          title="Delete listing"
+        >
+          <Trash2 size={20} />
         </button>
         <button
           onClick={() => onToggle(listing)}
@@ -270,6 +280,8 @@ export const FreelancerDashboard = ({ user, onLogout, onSwitchToClient }: Freela
   const [loading, setLoading] = useState(true);
   const [showNewListing, setShowNewListing] = useState(false);
   const [activeTab, setActiveTab] = useState<'listings' | 'offers'>('listings');
+  const [listingToDelete, setListingToDelete] = useState<ServiceListing | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const navigate = useNavigate();
   const freelancerId = user.id ?? '';
@@ -304,6 +316,18 @@ export const FreelancerDashboard = ({ user, onLogout, onSwitchToClient }: Freela
   };
 
   useEffect(() => { fetchData(); }, [freelancerId]);
+
+  const handleDeleteConfirm = async () => {
+    if (!listingToDelete) return;
+    setDeleting(true);
+    try {
+      await listingToDelete.deleteListing();
+      setListings(prev => prev.filter(l => l.id !== listingToDelete.id));
+      setListingToDelete(null);
+    } catch (e) { console.error(e); } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleToggle = async (listing: ServiceListing) => {
     await listing.updateListing({ isActive: !listing.isActive });
@@ -408,7 +432,7 @@ export const FreelancerDashboard = ({ user, onLogout, onSwitchToClient }: Freela
             ) : (
               <motion.div layout className="grid gap-4 md:grid-cols-2">
                 {listings.map(l => (
-                  <ListingCard key={l.id} listing={l} onToggle={handleToggle} onView={handleViewListing} />
+                  <ListingCard key={l.id} listing={l} onToggle={handleToggle} onView={handleViewListing} onDelete={setListingToDelete} />
                 ))}
               </motion.div>
             )}
@@ -444,6 +468,19 @@ export const FreelancerDashboard = ({ user, onLogout, onSwitchToClient }: Freela
             freelancerId={freelancerId}
             onCreated={fetchData}
             onClose={() => setShowNewListing(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {listingToDelete && (
+          <ConfirmDeleteModal
+            title="Delete Listing"
+            message={`Are you sure you want to delete "${listingToDelete.title}"? This cannot be undone.`}
+            onConfirm={handleDeleteConfirm}
+            onCancel={() => setListingToDelete(null)}
+            loading={deleting}
           />
         )}
       </AnimatePresence>
