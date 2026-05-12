@@ -104,6 +104,29 @@ Railway detects the `Dockerfile` automatically.
 
 ## Testing
 
+Tests use [pytest](https://pytest.org). Unit tests exercise classes directly; integration/API tests use FastAPI's `TestClient` against the full app.
+
+### Run all tests
+
 ```bash
+cd ml-service
+source .venv/bin/activate
 python -m pytest tests/ -v
 ```
+
+### Test files
+
+| File | Type | What is tested |
+|---|---|---|
+| `tests/test_ml_endpoints.py` | API integration | All three HTTP endpoints (`/predict-price`, `/detect-anomalies`, `/categorize-service`), validation, edge cases, happy paths |
+| `tests/test_price_predictor.py` | Unit | `PricePredictor` heuristic fallback, rating multiplier math, price-range invariants, singleton, all 15 known categories |
+| `tests/test_anomaly_detector.py` | Unit | `AnomalyDetector.detect` — threshold (< 5 prices), extreme outlier detection, response shape, valid index bounds |
+| `tests/test_service_categorizer.py` | Unit | `ServiceCategorizer.categorize` — known matches/mismatches, confidence range, all category display names, unknown-slug humanisation |
+| `tests/test_schemas.py` | Unit | Pydantic request/response schemas — required fields, boundary validation, type coercion, default values |
+| `tests/test_forecasting.py` | Unit | `ForecastingService` P2 stub contract (`NotImplementedError`), `ForecastDemandRequest`/`PriceTrendRequest` schema defaults |
+
+### Notes
+
+- `test_service_categorizer.py` loads the `all-MiniLM-L6-v2` sentence-transformer (~80 MB) on first run; it is cached automatically for subsequent runs.
+- The `PricePredictor` singleton is reset between test classes via an `autouse` fixture to prevent state leakage.
+- Integration tests (`test_ml_endpoints.py`) do not require a running database — the predictor falls back to its heuristic when no trained model is present.
