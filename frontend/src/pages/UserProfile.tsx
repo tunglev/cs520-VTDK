@@ -3,12 +3,14 @@ interface UserProfileProps {
   onLogout: () => void;
   onGoToDashboard: () => void;
   onRoleChange: (role: string, updates?: Record<string, unknown>) => void;
+  onViewTransactions: () => void;
 }
 
 import { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { ReceiptText } from 'lucide-react';
 
-export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange }: UserProfileProps) => {
+export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange, onViewTransactions }: UserProfileProps) => {
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [enrollLoading, setEnrollLoading] = useState(false);
   const [error, setError] = useState('');
@@ -142,6 +144,24 @@ export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange }: U
                 No active projects
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Transaction history shortcut */}
+        <div className="mt-8 border-4 border-black p-6 bg-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-display uppercase text-sm tracking-widest mb-1">Transaction History</h2>
+              <p className="font-mono text-xs uppercase opacity-50">View & manage your accepted offers</p>
+            </div>
+            <button
+              id="view-transactions-btn"
+              onClick={onViewTransactions}
+              className="flex items-center gap-2 px-5 py-3 bg-shadow-grey text-white font-display uppercase text-sm border-2 border-black shadow-brutal-sm hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"
+            >
+              <ReceiptText size={14} />
+              View Transactions
+            </button>
           </div>
         </div>
 
