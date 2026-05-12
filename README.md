@@ -120,6 +120,63 @@ A single root `.env` file (copied from `.env.example`) configures all three serv
 | DB migrations | Supabase | Manual: `supabase db push` |
 | Edge Functions | Supabase | Manual: `supabase functions deploy <name>` |
 
+## Testing
+
+Each service has its own test suite. Run them independently:
+
+### Frontend (Vitest + Testing Library)
+
+```bash
+cd frontend
+npm test
+```
+
+Tests cover: domain models, pricing strategies, React hooks (auth, inactivity logout), UI components (Navbar, Footer, ListingCard, OfferCard, OfferModal, PriceScatterPlot, ConfirmDeleteModal, Spinner), and service/repository layer. Supabase is fully mocked. See [`frontend/README.md`](./frontend/README.md) for details.
+
+### ML service (pytest)
+
+```bash
+cd ml-service
+source .venv/bin/activate
+python -m pytest tests/ -v
+```
+
+Tests cover: `PricePredictor` heuristic + singleton, `AnomalyDetector` threshold and outlier logic, `ServiceCategorizer` semantic matching, Pydantic schema validation, and the `ForecastingService` P2 stub contract. See [`ml-service/README.md`](./ml-service/README.md) for details.
+
+### Supabase Edge Functions (Deno)
+
+Edge function tests are **integration tests** that require the local Supabase stack to be running. Start it first:
+
+```bash
+supabase start
+supabase db reset
+supabase functions serve --env-file=.env
+```
+
+Then run individual function tests:
+
+```bash
+# accept-reject-offer
+deno test supabase/functions/accept-reject-offer/index.test.ts --allow-net --allow-env --env-file=.env
+
+# generate-pricing-report (also requires ml-service running on port 8000)
+deno test supabase/functions/generate-pricing-report/index.test.ts --allow-net --allow-env --env-file=.env
+
+# submit-review
+deno test supabase/functions/submit-review/index.test.ts --allow-net --allow-env --env-file=.env
+
+# manage-listing
+deno test supabase/functions/manage-listing/index.test.ts --allow-net --allow-env --env-file=.env
+
+# counter-offer
+deno test supabase/functions/counter-offer/index.test.ts --allow-net --allow-env --env-file=.env
+
+# complete-transaction
+deno test supabase/functions/complete-transaction/index.test.ts --allow-net --allow-env --env-file=.env
+```
+
+Each test file is self-contained: it seeds its own test data and uses timestamped emails to avoid collisions across parallel runs.
+
 ## Contributing
 
 See each service's README for service-specific setup, conventions, and testing instructions.
