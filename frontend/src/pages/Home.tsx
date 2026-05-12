@@ -21,20 +21,33 @@ export const HomePage = () => {
         });
         if (error) throw error;
         if (data && Array.isArray(data)) {
+          const freelancerIds = [...new Set(data.map((item: any) => item.freelancer_id).filter(Boolean))];
+          const { data: ratingsData } = await supabase
+            .from('freelancer_rating_aggregates')
+            .select('freelancer_id, avg_overall, review_count')
+            .in('freelancer_id', freelancerIds);
+
+          const ratingsMap = new Map(
+            (ratingsData ?? []).map((r: any) => [r.freelancer_id, r])
+          );
+
           const randomColors = ['bg-vibrant-coral', 'bg-rosy-copper', 'bg-white'];
-          const dbListings: Listing[] = data.map((item: any) => ({
-            id: item.id,
-            name: item.users?.business_name || item.title || 'Unknown Talent',
-            role: item.title || item.categories?.name || 'Freelancer',
-            category: item.categories?.name || item.category_id || 'general',
-            price: item.pricing_models?.[0]?.base_price || 0,
-            rating: 5.0,
-            reviews: 0,
-            location: item.users?.service_area || item.users?.zip_code || 'Remote',
-            tags: item.categories?.name ? [item.categories.name] : [],
-            color: randomColors[Math.floor(Math.random() * randomColors.length)],
-            completedJobs: 0,
-          }));
+          const dbListings: Listing[] = data.map((item: any) => {
+            const ratings = ratingsMap.get(item.freelancer_id);
+            return {
+              id: item.id,
+              name: item.users?.business_name || item.title || 'Unknown Talent',
+              role: item.title || item.categories?.name || 'Freelancer',
+              category: item.categories?.name || item.category_id || 'general',
+              price: item.pricing_models?.[0]?.base_price || 0,
+              rating: ratings?.avg_overall ?? 0,
+              reviews: ratings?.review_count ?? 0,
+              location: item.users?.service_area || item.users?.zip_code || 'Remote',
+              tags: item.categories?.name ? [item.categories.name] : [],
+              color: randomColors[Math.floor(Math.random() * randomColors.length)],
+              completedJobs: 0,
+            };
+          });
           setListings(dbListings);
         }
       } catch (err) {

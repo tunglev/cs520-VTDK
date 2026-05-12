@@ -3,13 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Star, MapPin, Clock, Briefcase, BarChart2, CheckCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
-import { getPricingReport } from '../data/mockData';
 import { PricingReportModal } from '../components/PricingReportModal';
 import { OfferModal } from '../components/OfferModal';
 import { useAuth } from '../hooks/useAuth';
 import { CustomerUser } from '../models/users/UserSubclasses';
 import { supabase } from '../lib/supabaseClient';
-import type { Listing, PricingModel } from '../types';
+import type { Listing, PricingModel, PricingReport } from '../types';
 
 interface ProfileDetails {
   bio: string;
@@ -27,6 +26,7 @@ export const FreelancerProfile = () => {
   const [offerOpen, setOfferOpen] = useState(false);
   const [listing, setListing] = useState<Listing | null>(null);
   const [profile, setProfile] = useState<ProfileDetails | null>(null);
+  const [report, setReport] = useState<PricingReport | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,6 +46,14 @@ export const FreelancerProfile = () => {
           return;
         }
 
+        const freelancerId = item.freelancer_id;
+
+        const { data: ratingData } = await supabase
+          .from('freelancer_rating_aggregates')
+          .select('avg_overall, review_count')
+          .eq('freelancer_id', freelancerId)
+          .single();
+
         const colors = ['bg-vibrant-coral', 'bg-rosy-copper', 'bg-white'];
         const mappedListing: Listing = {
           id: item.id,
@@ -53,8 +61,8 @@ export const FreelancerProfile = () => {
           role: item.title || item.categories?.name || 'Freelancer',
           category: item.categories?.name || item.category_id || 'general',
           price: item.pricing_models?.[0]?.base_price || 0,
-          rating: 5.0,
-          reviews: 0,
+          rating: ratingData?.avg_overall ?? 0,
+          reviews: ratingData?.review_count ?? 0,
           location: item.users?.service_area || item.users?.zip_code || 'Remote',
           tags: item.categories?.name ? [item.categories.name] : [],
           color: colors[Math.floor(Math.random() * colors.length)],
@@ -89,6 +97,43 @@ export const FreelancerProfile = () => {
 
         setListing(mappedListing);
         setProfile(profileDetails);
+
+        try {
+          const { data: reportData } = await supabase.functions.invoke('generate-pricing-report', {
+            method: 'POST',
+            body: {
+              category_id: item.category_id,
+              location: item.users?.service_area || '',
+              rating: ratingData?.avg_overall ?? 4.5,
+            },
+          });
+
+          if (reportData && !reportData.error) {
+            const freelancerPrice = mappedListing.price;
+            const avg = reportData.marketAvg ?? 0;
+            const min = reportData.marketMin ?? 0;
+            const max = reportData.marketMax ?? 0;
+            const median = reportData.marketMedian ?? 0;
+            const count = reportData.transactionCount ?? 0;
+            const percentile = avg > 0
+              ? Math.min(100, Math.max(0, Math.round((freelancerPrice / max) * 100)))
+              : 0;
+
+            setReport({
+              category: mappedListing.role,
+              marketAvg: avg,
+              marketMedian: median,
+              marketMin: min,
+              marketMax: max,
+              sampleSize: count,
+              percentile,
+              priceDistribution: [],
+              scatterData: [],
+            });
+          }
+        } catch {
+          // No pricing data available — report stays null
+        }
       } catch (err) {
         console.error('Error loading freelancer listing:', err);
         setListing(null);
@@ -103,8 +148,6 @@ export const FreelancerProfile = () => {
 
   if (loading) return null;
   if (!listing || !profile) return null;
-
-  const report = getPricingReport(listing);
 
   return (
     <main className="flex-1 max-w-7xl mx-auto w-full px-8 py-20">
@@ -225,31 +268,39 @@ export const FreelancerProfile = () => {
               <div className="font-display text-xl uppercase tracking-tighter mb-3">
                 Is ${listing.price}/hr a fair rate?
               </div>
-              <p className="font-mono text-xs opacity-70 mb-6 leading-relaxed">
-                See how {listing.name.split(' ')[0]}'s pricing stacks up against {report.sampleSize} completed
-                transactions in the {listing.role} market.
-              </p>
-              <div className="flex items-center justify-between text-xs font-mono uppercase mb-6">
-                <div>
-                  <div className="opacity-60">Market Avg</div>
-                  <div className="font-bold text-vibrant-coral">${report.marketAvg}/hr</div>
-                </div>
-                <div className="text-center">
-                  <div className="opacity-60">Median</div>
-                  <div className="font-bold">${report.marketMedian}/hr</div>
-                </div>
-                <div className="text-right">
-                  <div className="opacity-60">This Freelancer</div>
-                  <div className="font-bold">${listing.price}/hr</div>
-                </div>
-              </div>
-              <button
-                onClick={() => setReportOpen(true)}
-                className="w-full py-4 bg-vibrant-coral text-white font-display uppercase text-sm border-2 border-white/30 flex items-center justify-center gap-3 hover:bg-rosy-copper transition-colors"
-              >
-                <BarChart2 size={16} />
-                View Full Pricing Report
-              </button>
+              {report ? (
+                <>
+                  <p className="font-mono text-xs opacity-70 mb-6 leading-relaxed">
+                    See how {listing.name.split(' ')[0]}'s pricing stacks up against {report.sampleSize} completed
+                    transactions in the {listing.role} market.
+                  </p>
+                  <div className="flex items-center justify-between text-xs font-mono uppercase mb-6">
+                    <div>
+                      <div className="opacity-60">Market Avg</div>
+                      <div className="font-bold text-vibrant-coral">${report.marketAvg}/hr</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="opacity-60">Median</div>
+                      <div className="font-bold">${report.marketMedian}/hr</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="opacity-60">This Freelancer</div>
+                      <div className="font-bold">${listing.price}/hr</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setReportOpen(true)}
+                    className="w-full py-4 bg-vibrant-coral text-white font-display uppercase text-sm border-2 border-white/30 flex items-center justify-center gap-3 hover:bg-rosy-copper transition-colors"
+                  >
+                    <BarChart2 size={16} />
+                    View Full Pricing Report
+                  </button>
+                </>
+              ) : (
+                <p className="font-mono text-xs opacity-70 leading-relaxed">
+                  Not enough market data yet. Pricing insights will appear as more transactions are completed.
+                </p>
+              )}
             </div>
 
             {/* Pricing models */}
@@ -296,7 +347,7 @@ export const FreelancerProfile = () => {
         </div>
       </motion.div>
 
-      {reportOpen && (
+      {reportOpen && report && (
         <PricingReportModal
           report={report}
           listing={listing}
