@@ -17,7 +17,7 @@ export const Navbar = ({ user }: NavbarProps) => {
         Fairlance
       </Link>
       <div className="hidden md:flex gap-8 font-display uppercase text-sm tracking-widest">
-        <a href="#" className="hover:text-vibrant-coral transition-colors">Find Talent</a>
+        <Link to="/find-talent" className="hover:text-vibrant-coral transition-colors">Find Talent</Link>
         <Link to="/how-it-works" className="hover:text-vibrant-coral transition-colors">How it works</Link>
         <a href="#" className="hover:text-vibrant-coral transition-colors">Pricing</a>
       </div>

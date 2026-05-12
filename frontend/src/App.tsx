@@ -9,6 +9,7 @@ import { UserProfile } from './pages/UserProfile';
 import { FreelancerDashboard } from './pages/FreelancerDashboard';
 import { TransactionsPage } from './pages/TransactionsPage';
 import { HowItWorksPage } from './pages/HowItWorks';
+import { FindTalentPage } from './pages/FindTalent';
 import { supabase } from './lib/supabaseClient';
 import { useInactivityLogout } from './hooks/useInactivityLogout';
 import { Spinner } from './components/Spinner';
@@ -123,6 +124,7 @@ export default function App() {
           }
         />
         <Route path="/how-it-works" element={<HowItWorksPage />} />
+        <Route path="/find-talent" element={<FindTalentPage />} />
         <Route path="*" element={<Navigate to="/" />} />
         <Route
           path="/transactions"
