@@ -3,6 +3,7 @@ interface UserProfileProps {
   onLogout: () => void;
   onGoToDashboard: () => void;
   onRoleChange: (role: string, updates?: Record<string, unknown>) => void;
+  onViewTransactions: () => void;
 }
 
 import { useEffect, useState } from 'react';
@@ -10,8 +11,9 @@ import { supabase } from '../lib/supabaseClient';
 import { Offer, Transaction } from '../models/marketplace/Marketplace';
 import { cn } from '../lib/utils';
 import { OfferCard } from '../components/OfferCard';
+import { ReceiptText } from 'lucide-react';
 
-export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange }: UserProfileProps) => {
+export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange, onViewTransactions }: UserProfileProps) => {
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [enrollLoading, setEnrollLoading] = useState(false);
   const [error, setError] = useState('');
@@ -230,86 +232,23 @@ export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange }: U
           </div>
         </div>
 
-        {!isFreelancer && (
-          <div className="border-4 border-black p-6 bg-white shadow-brutal-sm">
-            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
-              <div>
-                <h2 className="font-display uppercase text-2xl tracking-tighter">Offer History</h2>
-                <p className="font-mono text-xs uppercase opacity-60 mt-2">
-                  Counter offers appear here as new pending offers.
-                </p>
-              </div>
-              <div className="flex gap-4 font-mono text-[10px] uppercase tracking-widest">
-                <div className="border-2 border-black px-3 py-2">
-                  Pending {pendingOfferCount}
-                </div>
-                <div className="border-2 border-black px-3 py-2">
-                  Completed {completedTransactionCount}
-                </div>
-              </div>
+        {/* Transaction history shortcut */}
+        <div className="mt-8 border-4 border-black p-6 bg-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-display uppercase text-sm tracking-widest mb-1">Transaction History</h2>
+              <p className="font-mono text-xs uppercase opacity-50">View & manage your accepted offers</p>
             </div>
-
-            {historyLoading ? (
-              <div className="font-mono text-sm uppercase opacity-40 animate-pulse">Loading history...</div>
-            ) : historyError ? (
-              <div className="font-mono text-xs uppercase text-vibrant-coral border-2 border-vibrant-coral px-4 py-3">
-                {historyError}
-              </div>
-            ) : (
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div className="space-y-3">
-                  <h3 className="font-mono text-[10px] uppercase tracking-widest opacity-60">Offers</h3>
-                  {offerHistory.length === 0 ? (
-                    <div className="border-2 border-dashed border-black/20 p-6 text-center font-mono text-xs uppercase opacity-50">
-                      No offers yet
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {offerHistory.map((offer) => (
-                        <OfferCard
-                          key={offer.id}
-                          offer={offer}
-                          userRole="customer"
-                          onAccept={handleAccept}
-                          onReject={handleReject}
-                          onCounter={handleCounter}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="font-mono text-[10px] uppercase tracking-widest opacity-60">Complete</h3>
-                  {transactionHistory.length === 0 ? (
-                    <div className="border-2 border-dashed border-black/20 p-6 text-center font-mono text-xs uppercase opacity-50">
-                      No completed transactions yet
-                    </div>
-                  ) : (
-                    transactionHistory.map((transaction) => (
-                      <div key={transaction.id} className="border-2 border-black p-4 bg-white">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="font-display uppercase text-lg tracking-tighter">${transaction.finalPrice}</div>
-                            <div className="font-mono text-[10px] uppercase opacity-50 mt-1">
-                              Completed {transaction.completedAt ? new Date(transaction.completedAt).toLocaleDateString() : 'Recently'}
-                            </div>
-                            <div className="font-mono text-[10px] uppercase opacity-60 mt-2">
-                              Offer {transaction.offerId.slice(0, 8)}
-                            </div>
-                          </div>
-                          <span className="px-2 py-1 border border-black font-mono text-[10px] uppercase bg-bone">
-                            complete
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
+            <button
+              id="view-transactions-btn"
+              onClick={onViewTransactions}
+              className="flex items-center gap-2 px-5 py-3 bg-shadow-grey text-white font-display uppercase text-sm border-2 border-black shadow-brutal-sm hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"
+            >
+              <ReceiptText size={14} />
+              View Transactions
+            </button>
           </div>
-        )}
+        </div>
 
         <div className="mt-8 border-4 border-black p-6 bg-shadow-grey text-white">
           <h2 className="font-display uppercase text-lg tracking-widest mb-4">Mode Switch</h2>

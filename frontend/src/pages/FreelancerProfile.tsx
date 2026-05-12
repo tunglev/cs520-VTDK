@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Star, MapPin, Clock, Briefcase, BarChart2, CheckCircle } from 'lucide-react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Star, MapPin, Clock, Briefcase, BarChart2, CheckCircle, Eye, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 import { getPricingReport } from '../data/mockData';
 import { PricingReportModal } from '../components/PricingReportModal';
 import { OfferModal } from '../components/OfferModal';
+import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal';
 import { useAuth } from '../hooks/useAuth';
 import { CustomerUser } from '../models/users/UserSubclasses';
 import { supabase } from '../lib/supabaseClient';
-import type { Listing, PricingModel } from '../types';
+import type { Listing, PricingModel, PricingReport } from '../types';
+import { AnimatePresence } from 'motion/react';
 
 interface ProfileDetails {
   bio: string;
@@ -22,11 +24,16 @@ interface ProfileDetails {
 export const FreelancerProfile = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isPreview = searchParams.get('preview') === 'true';
   const { user } = useAuth();
   const [reportOpen, setReportOpen] = useState(false);
   const [offerOpen, setOfferOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [listing, setListing] = useState<Listing | null>(null);
   const [profile, setProfile] = useState<ProfileDetails | null>(null);
+  const [report, setReport] = useState<PricingReport | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,6 +53,14 @@ export const FreelancerProfile = () => {
           return;
         }
 
+        const freelancerId = item.freelancer_id;
+
+        const { data: ratingData } = await supabase
+          .from('freelancer_rating_aggregates')
+          .select('avg_overall, review_count')
+          .eq('freelancer_id', freelancerId)
+          .single();
+
         const colors = ['bg-vibrant-coral', 'bg-rosy-copper', 'bg-white'];
         const mappedListing: Listing = {
           id: item.id,
@@ -53,8 +68,8 @@ export const FreelancerProfile = () => {
           role: item.title || item.categories?.name || 'Freelancer',
           category: item.categories?.name || item.category_id || 'general',
           price: item.pricing_models?.[0]?.base_price || 0,
-          rating: 5.0,
-          reviews: 0,
+          rating: ratingData?.avg_overall ?? 0,
+          reviews: ratingData?.review_count ?? 0,
           location: item.users?.service_area || item.users?.zip_code || 'Remote',
           tags: item.categories?.name ? [item.categories.name] : [],
           color: colors[Math.floor(Math.random() * colors.length)],
@@ -89,6 +104,55 @@ export const FreelancerProfile = () => {
 
         setListing(mappedListing);
         setProfile(profileDetails);
+
+        const mockReport = getPricingReport(mappedListing);
+
+        try {
+          const { data: reportData, error: reportError } = await supabase.functions.invoke('generate-pricing-report', {
+            method: 'POST',
+            body: {
+              category_id: item.category_id,
+              location: item.users?.service_area || '',
+              rating: ratingData?.avg_overall ?? 4.5,
+            },
+          });
+
+          if (reportData && !reportData.error) {
+            const scatterBase = (reportData.scatterData?.length > 0 ? reportData.scatterData : mockReport.scatterData)
+              .map((p: any) => p.name === mappedListing.role ? { ...p, isCurrent: true } : p);
+            const hasCurrentFreelancer = scatterBase.some((p: any) => p.isCurrent);
+            if (!hasCurrentFreelancer) {
+              scatterBase.push({
+                name: mappedListing.name,
+                price: mappedListing.price,
+                rating: mappedListing.rating,
+                reviews: mappedListing.reviews,
+                isCurrent: true,
+              });
+            }
+            const scatterWithCurrent = scatterBase;
+
+            const allPrices = scatterWithCurrent.map((p: any) => p.price).sort((a: number, b: number) => a - b);
+            const below = allPrices.filter((p: number) => p < mappedListing.price).length;
+            const percentile = allPrices.length > 0 ? Math.round((below / allPrices.length) * 100) : mockReport.percentile;
+
+            setReport({
+              ...mockReport,
+              marketAvg: reportData.marketAvg ?? mockReport.marketAvg,
+              marketMedian: reportData.marketMedian ?? mockReport.marketMedian,
+              marketMin: reportData.marketMin ?? mockReport.marketMin,
+              marketMax: reportData.marketMax ?? mockReport.marketMax,
+              sampleSize: reportData.transactionCount ?? mockReport.sampleSize,
+              priceDistribution: reportData.priceDistribution?.length > 0 ? reportData.priceDistribution : mockReport.priceDistribution,
+              scatterData: scatterWithCurrent,
+              percentile,
+            });
+          } else {
+            setReport(mockReport);
+          }
+        } catch {
+          setReport(mockReport);
+        }
       } catch (err) {
         console.error('Error loading freelancer listing:', err);
         setListing(null);
@@ -101,12 +165,39 @@ export const FreelancerProfile = () => {
     fetchListing();
   }, [id]);
 
+  const handleDeleteConfirm = async () => {
+    if (!id) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase.from('listings').delete().eq('id', id);
+      if (error) throw error;
+      navigate('/dashboard');
+    } catch (e) { console.error(e); } finally {
+      setDeleting(false);
+      setDeleteOpen(false);
+    }
+  };
+
   if (loading) return null;
   if (!listing || !profile) return null;
 
-  const report = getPricingReport(listing);
-
   return (
+    <>
+      {isPreview && (
+        <div className="w-full bg-shadow-grey text-white border-b-4 border-black px-8 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest">
+            <Eye size={14} />
+            Preview — This is how customers see your listing
+          </div>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest hover:text-vibrant-coral transition-colors group"
+          >
+            <ArrowLeft size={12} className="group-hover:-translate-x-1 transition-transform" />
+            Back to Dashboard
+          </button>
+        </div>
+      )}
     <main className="flex-1 max-w-7xl mx-auto w-full px-8 py-20">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
@@ -115,11 +206,11 @@ export const FreelancerProfile = () => {
       >
         {/* Back nav */}
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => isPreview ? navigate('/dashboard') : navigate(-1)}
           className="flex items-center gap-2 font-mono text-xs uppercase mb-10 hover:text-vibrant-coral transition-colors group"
         >
           <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-          Back to search
+          {isPreview ? 'Back to Dashboard' : 'Back to search'}
         </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
@@ -203,6 +294,22 @@ export const FreelancerProfile = () => {
           {/* ── Right column ─────────────────────────────────────── */}
           <div className="space-y-6">
 
+            {/* Delete Listing CTA (preview mode only) */}
+            {isPreview && (
+              <div className="border-4 border-black bg-white shadow-brutal p-6">
+                <h2 className="font-display text-xl uppercase tracking-tighter mb-2">Manage Listing</h2>
+                <p className="font-mono text-xs opacity-70 mb-5 leading-relaxed">
+                  Permanently remove this listing. This action cannot be undone.
+                </p>
+                <button
+                  onClick={() => setDeleteOpen(true)}
+                  className="w-full py-3 bg-rosy-copper text-white border-2 border-black font-display uppercase text-sm flex items-center justify-center gap-2 shadow-brutal-sm hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"
+                >
+                  <Trash2 size={14} /> Delete Listing
+                </button>
+              </div>
+            )}
+
             {/* Make an Offer CTA */}
             {user instanceof CustomerUser && (
               <div className="border-4 border-black bg-white shadow-brutal p-6">
@@ -226,17 +333,17 @@ export const FreelancerProfile = () => {
                 Is ${listing.price}/hr a fair rate?
               </div>
               <p className="font-mono text-xs opacity-70 mb-6 leading-relaxed">
-                See how {listing.name.split(' ')[0]}'s pricing stacks up against {report.sampleSize} completed
+                See how {listing.name.split(' ')[0]}'s pricing stacks up against {report?.sampleSize ?? 0} completed
                 transactions in the {listing.role} market.
               </p>
               <div className="flex items-center justify-between text-xs font-mono uppercase mb-6">
                 <div>
                   <div className="opacity-60">Market Avg</div>
-                  <div className="font-bold text-vibrant-coral">${report.marketAvg}/hr</div>
+                  <div className="font-bold text-vibrant-coral">${report?.marketAvg ?? 0}/hr</div>
                 </div>
                 <div className="text-center">
                   <div className="opacity-60">Median</div>
-                  <div className="font-bold">${report.marketMedian}/hr</div>
+                  <div className="font-bold">${report?.marketMedian ?? 0}/hr</div>
                 </div>
                 <div className="text-right">
                   <div className="opacity-60">This Freelancer</div>
@@ -296,7 +403,7 @@ export const FreelancerProfile = () => {
         </div>
       </motion.div>
 
-      {reportOpen && (
+      {reportOpen && report && (
         <PricingReportModal
           report={report}
           listing={listing}
@@ -311,6 +418,19 @@ export const FreelancerProfile = () => {
           onClose={() => setOfferOpen(false)}
         />
       )}
+
+      <AnimatePresence>
+        {deleteOpen && (
+          <ConfirmDeleteModal
+            title="Delete Listing"
+            message={`Are you sure you want to delete "${listing.name}"? This cannot be undone.`}
+            onConfirm={handleDeleteConfirm}
+            onCancel={() => setDeleteOpen(false)}
+            loading={deleting}
+          />
+        )}
+      </AnimatePresence>
     </main>
+    </>
   );
 };

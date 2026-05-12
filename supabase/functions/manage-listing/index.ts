@@ -18,6 +18,7 @@ interface CreateListingBody {
 
 interface UpdateListingBody {
   id: string;
+  category_id?: string;
   title?: string;
   description?: string;
   is_active?: boolean;
@@ -113,6 +114,7 @@ async function handleUpdate(req: Request) {
 
   // Build the update payload (only include provided fields)
   const updates: Record<string, unknown> = {};
+  if (body.category_id !== undefined) updates.category_id = body.category_id;
   if (body.title !== undefined) updates.title = body.title;
   if (body.description !== undefined) updates.description = body.description;
   if (body.is_active !== undefined) updates.is_active = body.is_active;

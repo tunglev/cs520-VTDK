@@ -7,6 +7,10 @@ import { AuthPage } from './pages/Auth';
 import { FreelancerProfile } from './pages/FreelancerProfile';
 import { UserProfile } from './pages/UserProfile';
 import { FreelancerDashboard } from './pages/FreelancerDashboard';
+import { TransactionsPage } from './pages/TransactionsPage';
+import { HowItWorksPage } from './pages/HowItWorks';
+import { FindTalentPage } from './pages/FindTalent';
+import { PricingPage } from './pages/Pricing';
 import { supabase } from './lib/supabaseClient';
 import { useInactivityLogout } from './hooks/useInactivityLogout';
 import { Spinner } from './components/Spinner';
@@ -27,7 +31,7 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         setUser(mapSupabaseUser(session.user));
-        if (event === 'SIGNED_IN') navigate('/');
+        if (event === 'SIGNED_IN' && window.location.pathname === '/auth') navigate('/');
       } else {
         setUser(null);
       }
@@ -114,12 +118,29 @@ export default function App() {
                   onLogout={handleLogout}
                   onGoToDashboard={() => navigate('/dashboard')}
                   onRoleChange={handleRoleChange}
+                  onViewTransactions={() => navigate('/transactions')}
                 />
               )
               : <Navigate to="/auth" />
           }
         />
+        <Route path="/how-it-works" element={<HowItWorksPage />} />
+        <Route path="/find-talent" element={<FindTalentPage />} />
+        <Route path="/pricing" element={<PricingPage />} />
         <Route path="*" element={<Navigate to="/" />} />
+        <Route
+          path="/transactions"
+          element={
+            authLoading ? <Spinner /> : user
+              ? (
+                <TransactionsPage
+                  user={user}
+                  onBack={() => navigate('/profile')}
+                />
+              )
+              : <Navigate to="/auth" />
+          }
+        />
       </Routes>
 
       <Footer />

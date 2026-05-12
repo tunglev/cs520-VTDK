@@ -81,7 +81,7 @@ export const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
         <div className="w-full max-w-2xl bg-white border-4 border-black p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
           <h2 className="text-4xl font-display uppercase tracking-tighter mb-2">Complete Profile</h2>
           <p className="font-mono text-xs uppercase opacity-60 mb-8">
-            Tell us about yourself to get started on VTDK.
+            Tell us about yourself to get started on Fairlance.
           </p>
 
           {error && (
@@ -147,19 +147,19 @@ export const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
               />
             </div>
 
-            <div className="pt-6">
-              <button type="submit" className="w-full py-4 bg-black text-white font-display uppercase border-2 border-black shadow-brutal-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
+            <div className="pt-6 flex gap-4">
+              <button
+                type="button"
+                onClick={() => { setError(''); setIsOnboarding(false); }}
+                className="flex-1 py-4 bg-white text-black font-display uppercase border-2 border-black shadow-brutal-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
+              >
+                Back
+              </button>
+              <button type="submit" className="flex-1 py-4 bg-black text-white font-display uppercase border-2 border-black shadow-brutal-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
                 Complete Profile
               </button>
             </div>
           </form>
-          <button
-            type="button"
-            onClick={() => { setError(''); setIsOnboarding(false); }}
-            className="mt-4 w-full py-4 bg-white text-black font-display uppercase border-2 border-black shadow-brutal-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
-          >
-            Back
-          </button>
         </div>
       </div>
     );
@@ -169,7 +169,7 @@ export const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
     <div className="flex-1 flex max-w-7xl mx-auto w-full items-center justify-center p-8 mt-12 mb-24">
       <div className="w-full max-w-md bg-white border-4 border-black p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
         <h2 className="text-4xl font-display uppercase tracking-tighter mb-2">
-          {isLogin ? 'Welcome Back' : 'Join VTDK'}
+          {isLogin ? 'Welcome Back' : 'Join Fairlance'}
         </h2>
         <p className="font-mono text-xs uppercase opacity-60 mb-8">
           {isLogin ? 'Enter your details to access your account' : 'Create an account to hire or work'}
