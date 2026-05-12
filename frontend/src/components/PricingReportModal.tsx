@@ -159,61 +159,69 @@ export const PricingReportModal = ({ report, listing, onClose }: PricingReportMo
                 Price Distribution (USD/hr)
               </div>
 
-              <div className="bg-white border-4 border-black p-6">
-                <div className="h-40">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={report.priceDistribution} barCategoryGap="20%">
-                      <Tooltip
-                        cursor={{ fill: 'transparent' }}
-                        content={({ active, payload }) => {
-                          if (active && payload?.length) {
-                            return (
-                              <div className="bg-shadow-grey text-white p-2 border-2 border-black text-xs font-mono">
-                                {payload[0].payload.range}: {payload[0].value} freelancers
-                                <br />
-                                avg ${payload[0].payload.avg}/hr
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
-                      <Bar dataKey="count" radius={0}>
-                        {report.priceDistribution.map((entry, i) => (
-                          <Cell
-                            key={`cell-${i}`}
-                            fill={entry.range === activeRange ? '#FF6F59' : '#231F20'}
-                          />
-                        ))}
-                      </Bar>
-                      <XAxis
-                        dataKey="range"
-                        tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#73726c' }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+              {report.priceDistribution.length > 0 ? (
+                <div className="bg-white border-4 border-black p-6">
+                  <div className="h-40">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={report.priceDistribution} barCategoryGap="20%">
+                        <Tooltip
+                          cursor={{ fill: 'transparent' }}
+                          content={({ active, payload }) => {
+                            if (active && payload?.length) {
+                              return (
+                                <div className="bg-shadow-grey text-white p-2 border-2 border-black text-xs font-mono">
+                                  {payload[0].payload.range}: {payload[0].value} freelancers
+                                  <br />
+                                  avg ${payload[0].payload.avg}/hr
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Bar dataKey="count" radius={0}>
+                          {report.priceDistribution.map((entry, i) => (
+                            <Cell
+                              key={`cell-${i}`}
+                              fill={entry.range === activeRange ? '#FF6F59' : '#231F20'}
+                            />
+                          ))}
+                        </Bar>
+                        <XAxis
+                          dataKey="range"
+                          tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#73726c' }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
 
-                {/* Range filter pills */}
-                <div className="flex flex-wrap gap-2 mt-4">
-                  {report.priceDistribution.map(p => (
-                    <button
-                      key={p.range}
-                      onClick={() => setActiveRange(activeRange === p.range ? null : p.range)}
-                      className={cn(
-                        'px-3 py-1.5 border-2 border-black font-mono text-[9px] uppercase transition-all',
-                        activeRange === p.range
-                          ? 'bg-vibrant-coral text-white shadow-none translate-x-0.5 translate-y-0.5'
-                          : 'bg-white shadow-brutal-sm hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none'
-                      )}
-                    >
-                      {p.range} ({p.count})
-                    </button>
-                  ))}
+                  {/* Range filter pills */}
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {report.priceDistribution.map(p => (
+                      <button
+                        key={p.range}
+                        onClick={() => setActiveRange(activeRange === p.range ? null : p.range)}
+                        className={cn(
+                          'px-3 py-1.5 border-2 border-black font-mono text-[9px] uppercase transition-all',
+                          activeRange === p.range
+                            ? 'bg-vibrant-coral text-white shadow-none translate-x-0.5 translate-y-0.5'
+                            : 'bg-white shadow-brutal-sm hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none'
+                        )}
+                      >
+                        {p.range} ({p.count})
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-white border-4 border-black p-6">
+                  <p className="font-mono text-xs opacity-50 text-center py-8">
+                    Not enough market data yet. Distribution charts will appear as more transactions are completed.
+                  </p>
+                </div>
+              )}
             </section>
 
             {/* ── Scatter Plot ─────────────────────────────────── */}
@@ -221,9 +229,17 @@ export const PricingReportModal = ({ report, listing, onClose }: PricingReportMo
               <div className="font-mono text-[10px] uppercase tracking-widest opacity-60 mb-4">
                 Price vs. Rating — Full Market
               </div>
-              <div className="bg-white border-4 border-black p-6">
-                <PriceScatterPlot data={report.scatterData} marketAvg={report.marketAvg} />
-              </div>
+              {report.scatterData.length > 0 ? (
+                <div className="bg-white border-4 border-black p-6">
+                  <PriceScatterPlot data={report.scatterData} marketAvg={report.marketAvg} />
+                </div>
+              ) : (
+                <div className="bg-white border-4 border-black p-6">
+                  <p className="font-mono text-xs opacity-50 text-center py-8">
+                    Not enough market data yet. Scatter plot will appear as more transactions are completed.
+                  </p>
+                </div>
+              )}
             </section>
 
           </div>

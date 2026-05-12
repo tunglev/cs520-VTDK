@@ -6,12 +6,13 @@ import { PRICE_DISTRIBUTION } from '../data/mockData';
 import { PriceChart } from '../components/PriceChart';
 import { ListingCard } from '../components/ListingCard';
 import { supabase } from '../lib/supabaseClient';
-import type { Listing } from '../types';
+import type { Listing, PriceDistributionBucket } from '../types';
 
 export const HomePage = () => {
   const [search, setSearch] = useState('');
   const [activeRange, setActiveRange] = useState<string | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
+  const [priceDistribution, setPriceDistribution] = useState<PriceDistributionBucket[] | undefined>(undefined);
 
   useEffect(() => {
     const fetchListings = async () => {
@@ -21,20 +22,33 @@ export const HomePage = () => {
         });
         if (error) throw error;
         if (data && Array.isArray(data)) {
+          const freelancerIds = [...new Set(data.map((item: any) => item.freelancer_id).filter(Boolean))];
+          const { data: ratingsData } = await supabase
+            .from('freelancer_rating_aggregates')
+            .select('freelancer_id, avg_overall, review_count')
+            .in('freelancer_id', freelancerIds);
+
+          const ratingsMap = new Map(
+            (ratingsData ?? []).map((r: any) => [r.freelancer_id, r])
+          );
+
           const randomColors = ['bg-vibrant-coral', 'bg-rosy-copper', 'bg-white'];
-          const dbListings: Listing[] = data.map((item: any) => ({
-            id: item.id,
-            name: item.users?.business_name || item.title || 'Unknown Talent',
-            role: item.title || item.categories?.name || 'Freelancer',
-            category: item.categories?.name || item.category_id || 'general',
-            price: item.pricing_models?.[0]?.base_price || 0,
-            rating: 5.0,
-            reviews: 0,
-            location: item.users?.service_area || item.users?.zip_code || 'Remote',
-            tags: item.categories?.name ? [item.categories.name] : [],
-            color: randomColors[Math.floor(Math.random() * randomColors.length)],
-            completedJobs: 0,
-          }));
+          const dbListings: Listing[] = data.map((item: any) => {
+            const ratings = ratingsMap.get(item.freelancer_id);
+            return {
+              id: item.id,
+              name: item.users?.business_name || item.title || 'Unknown Talent',
+              role: item.title || item.categories?.name || 'Freelancer',
+              category: item.categories?.name || item.category_id || 'general',
+              price: item.pricing_models?.[0]?.base_price || 0,
+              rating: ratings?.avg_overall ?? 0,
+              reviews: ratings?.review_count ?? 0,
+              location: item.users?.service_area || item.users?.zip_code || 'Remote',
+              tags: item.categories?.name ? [item.categories.name] : [],
+              color: randomColors[Math.floor(Math.random() * randomColors.length)],
+              completedJobs: 0,
+            };
+          });
           setListings(dbListings);
         }
       } catch (err) {
@@ -43,6 +57,15 @@ export const HomePage = () => {
     };
 
     fetchListings();
+
+    supabase.functions.invoke('generate-pricing-report', {
+      method: 'POST',
+      body: {},
+    }).then(({ data }) => {
+      if (data?.priceDistribution?.length > 0) {
+        setPriceDistribution(data.priceDistribution);
+      }
+    }).catch(() => {});
   }, []);
 
   const filteredListings = useMemo(() => {
@@ -85,10 +108,10 @@ export const HomePage = () => {
           </div>
         </div>
 
-        <PriceChart activeRange={activeRange} />
+        <PriceChart activeRange={activeRange} data={priceDistribution} />
 
         <div className="mt-4 flex gap-4 overflow-x-auto pb-4">
-          {PRICE_DISTRIBUTION.map(p => (
+          {(priceDistribution ?? PRICE_DISTRIBUTION).map(p => (
             <button
               key={p.range}
               onClick={() => setActiveRange(activeRange === p.range ? null : p.range)}

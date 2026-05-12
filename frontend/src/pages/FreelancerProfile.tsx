@@ -10,7 +10,7 @@ import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal';
 import { useAuth } from '../hooks/useAuth';
 import { CustomerUser } from '../models/users/UserSubclasses';
 import { supabase } from '../lib/supabaseClient';
-import type { Listing, PricingModel } from '../types';
+import type { Listing, PricingModel, PricingReport } from '../types';
 import { AnimatePresence } from 'motion/react';
 
 interface ProfileDetails {
@@ -33,6 +33,7 @@ export const FreelancerProfile = () => {
   const [deleting, setDeleting] = useState(false);
   const [listing, setListing] = useState<Listing | null>(null);
   const [profile, setProfile] = useState<ProfileDetails | null>(null);
+  const [report, setReport] = useState<PricingReport | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,6 +53,14 @@ export const FreelancerProfile = () => {
           return;
         }
 
+        const freelancerId = item.freelancer_id;
+
+        const { data: ratingData } = await supabase
+          .from('freelancer_rating_aggregates')
+          .select('avg_overall, review_count')
+          .eq('freelancer_id', freelancerId)
+          .single();
+
         const colors = ['bg-vibrant-coral', 'bg-rosy-copper', 'bg-white'];
         const mappedListing: Listing = {
           id: item.id,
@@ -59,8 +68,8 @@ export const FreelancerProfile = () => {
           role: item.title || item.categories?.name || 'Freelancer',
           category: item.categories?.name || item.category_id || 'general',
           price: item.pricing_models?.[0]?.base_price || 0,
-          rating: 5.0,
-          reviews: 0,
+          rating: ratingData?.avg_overall ?? 0,
+          reviews: ratingData?.review_count ?? 0,
           location: item.users?.service_area || item.users?.zip_code || 'Remote',
           tags: item.categories?.name ? [item.categories.name] : [],
           color: colors[Math.floor(Math.random() * colors.length)],
@@ -95,6 +104,55 @@ export const FreelancerProfile = () => {
 
         setListing(mappedListing);
         setProfile(profileDetails);
+
+        const mockReport = getPricingReport(mappedListing);
+
+        try {
+          const { data: reportData, error: reportError } = await supabase.functions.invoke('generate-pricing-report', {
+            method: 'POST',
+            body: {
+              category_id: item.category_id,
+              location: item.users?.service_area || '',
+              rating: ratingData?.avg_overall ?? 4.5,
+            },
+          });
+
+          if (reportData && !reportData.error) {
+            const scatterBase = (reportData.scatterData?.length > 0 ? reportData.scatterData : mockReport.scatterData)
+              .map((p: any) => p.name === mappedListing.role ? { ...p, isCurrent: true } : p);
+            const hasCurrentFreelancer = scatterBase.some((p: any) => p.isCurrent);
+            if (!hasCurrentFreelancer) {
+              scatterBase.push({
+                name: mappedListing.name,
+                price: mappedListing.price,
+                rating: mappedListing.rating,
+                reviews: mappedListing.reviews,
+                isCurrent: true,
+              });
+            }
+            const scatterWithCurrent = scatterBase;
+
+            const allPrices = scatterWithCurrent.map((p: any) => p.price).sort((a: number, b: number) => a - b);
+            const below = allPrices.filter((p: number) => p < mappedListing.price).length;
+            const percentile = allPrices.length > 0 ? Math.round((below / allPrices.length) * 100) : mockReport.percentile;
+
+            setReport({
+              ...mockReport,
+              marketAvg: reportData.marketAvg ?? mockReport.marketAvg,
+              marketMedian: reportData.marketMedian ?? mockReport.marketMedian,
+              marketMin: reportData.marketMin ?? mockReport.marketMin,
+              marketMax: reportData.marketMax ?? mockReport.marketMax,
+              sampleSize: reportData.transactionCount ?? mockReport.sampleSize,
+              priceDistribution: reportData.priceDistribution?.length > 0 ? reportData.priceDistribution : mockReport.priceDistribution,
+              scatterData: scatterWithCurrent,
+              percentile,
+            });
+          } else {
+            setReport(mockReport);
+          }
+        } catch {
+          setReport(mockReport);
+        }
       } catch (err) {
         console.error('Error loading freelancer listing:', err);
         setListing(null);
@@ -122,8 +180,6 @@ export const FreelancerProfile = () => {
 
   if (loading) return null;
   if (!listing || !profile) return null;
-
-  const report = getPricingReport(listing);
 
   return (
     <>
@@ -277,17 +333,17 @@ export const FreelancerProfile = () => {
                 Is ${listing.price}/hr a fair rate?
               </div>
               <p className="font-mono text-xs opacity-70 mb-6 leading-relaxed">
-                See how {listing.name.split(' ')[0]}'s pricing stacks up against {report.sampleSize} completed
+                See how {listing.name.split(' ')[0]}'s pricing stacks up against {report?.sampleSize ?? 0} completed
                 transactions in the {listing.role} market.
               </p>
               <div className="flex items-center justify-between text-xs font-mono uppercase mb-6">
                 <div>
                   <div className="opacity-60">Market Avg</div>
-                  <div className="font-bold text-vibrant-coral">${report.marketAvg}/hr</div>
+                  <div className="font-bold text-vibrant-coral">${report?.marketAvg ?? 0}/hr</div>
                 </div>
                 <div className="text-center">
                   <div className="opacity-60">Median</div>
-                  <div className="font-bold">${report.marketMedian}/hr</div>
+                  <div className="font-bold">${report?.marketMedian ?? 0}/hr</div>
                 </div>
                 <div className="text-right">
                   <div className="opacity-60">This Freelancer</div>
@@ -347,7 +403,7 @@ export const FreelancerProfile = () => {
         </div>
       </motion.div>
 
-      {reportOpen && (
+      {reportOpen && report && (
         <PricingReportModal
           report={report}
           listing={listing}
