@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabaseClient';
 import { ServiceListing, Offer } from '../models/marketplace/Marketplace';
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal';
 import { cn } from '../lib/utils';
+import { OfferCard } from '../components/OfferCard';
 
 interface FreelancerDashboardProps {
   user: { id?: string; name: string; email: string };
@@ -91,47 +92,6 @@ const ListingCard = ({
           {listing.isActive
             ? <ToggleRight size={32} className="text-vibrant-coral" />
             : <ToggleLeft size={32} />}
-        </button>
-      </div>
-    </div>
-  </motion.div>
-);
-
-// ── Offer Card ────────────────────────────────────────────────
-const OfferCard = ({
-  offer,
-  onAccept,
-  onReject,
-}: {
-  offer: Offer;
-  onAccept: (o: Offer) => void | Promise<void>;
-  onReject: (o: Offer) => void | Promise<void>;
-}) => (
-  <motion.div layout className="border-4 border-black p-5 bg-white shadow-brutal-sm">
-    <div className="flex items-center justify-between gap-4 flex-wrap">
-      <div>
-        <div className="font-display uppercase text-xl tracking-tighter">${offer.amount}</div>
-        <div className="font-mono text-[10px] uppercase opacity-50 mt-1">
-          {offer.scope ?? 'No scope provided'} · {new Date(offer.createdAt).toLocaleDateString()}
-        </div>
-        {offer.expiresAt && (
-          <div className="font-mono text-[10px] uppercase text-vibrant-coral mt-1">
-            Expires {new Date(offer.expiresAt).toLocaleDateString()}
-          </div>
-        )}
-      </div>
-      <div className="flex gap-2">
-        <button
-          onClick={() => onReject(offer)}
-          className="px-4 py-2 border-2 border-black font-display uppercase text-sm hover:bg-black hover:text-white transition-colors flex items-center gap-2"
-        >
-          <XCircle size={14} /> Reject
-        </button>
-        <button
-          onClick={() => onAccept(offer)}
-          className="px-4 py-2 bg-vibrant-coral text-white border-2 border-black font-display uppercase text-sm hover:translate-x-0.5 hover:translate-y-0.5 transition-transform shadow-brutal-sm flex items-center gap-2"
-        >
-          <CheckCircle size={14} /> Accept
         </button>
       </div>
     </div>
@@ -595,6 +555,15 @@ export const FreelancerDashboard = ({ user, onLogout, onSwitchToClient }: Freela
     } catch (e) { console.error(e); }
   };
 
+  const handleCounter = async (offer: Offer, newAmount: number) => {
+    try {
+      await offer.counter(newAmount);
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
+  };
+
   const activeListings  = listings.filter(l => l.isActive).length;
   const pendingOffers   = offers.length;
 
@@ -700,7 +669,14 @@ export const FreelancerDashboard = ({ user, onLogout, onSwitchToClient }: Freela
             ) : (
               <motion.div layout className="space-y-4">
                 {offers.map(o => (
-                  <OfferCard key={o.id} offer={o} onAccept={handleAccept} onReject={handleReject} />
+                  <OfferCard
+                    key={o.id}
+                    offer={o}
+                    userRole="freelancer"
+                    onAccept={handleAccept}
+                    onReject={handleReject}
+                    onCounter={handleCounter}
+                  />
                 ))}
               </motion.div>
             )}

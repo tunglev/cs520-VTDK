@@ -113,6 +113,7 @@ export class Offer {
   amount: number;
   scope: string | null;
   status: OfferStatus;
+  proposedBy: 'customer' | 'freelancer';
   expiresAt: string | null;
   createdAt: string;
 
@@ -124,6 +125,7 @@ export class Offer {
     amount: number;
     scope: string | null;
     status: OfferStatus;
+    proposedBy: 'customer' | 'freelancer';
     expiresAt: string | null;
     createdAt: string;
   }) {
@@ -134,6 +136,7 @@ export class Offer {
     this.amount       = data.amount;
     this.scope        = data.scope;
     this.status       = data.status;
+    this.proposedBy   = data.proposedBy;
     this.expiresAt    = data.expiresAt;
     this.createdAt    = data.createdAt;
   }
@@ -144,6 +147,7 @@ export class Offer {
       body: { offer_id: this.id, action: 'accept' },
     });
     if (error) throw error;
+    if (data.error) throw new Error(JSON.stringify(data));
     this.status = 'active';
     return data;
   }
@@ -153,24 +157,24 @@ export class Offer {
       body: { offer_id: this.id, action: 'reject' },
     });
     if (error) throw error;
+    if (data.error) throw new Error(JSON.stringify(data));
     this.status = 'rejected';
     return data;
   }
 
-  // Creates a counter-offer (new pending offer) with a revised amount.
+  // Submits a counter-offer by invoking the edge function to update the amount and proposed_by status.
   async counter(newAmount: number) {
-    const { data, error } = await supabase
-      .from('offers')
-      .insert({
-        customer_id:  this.customerId,
-        listing_id:   this.listingId,
-        amount:       newAmount,
-        scope:        this.scope,
-      })
-      .select()
-      .single();
+    const { data, error } = await supabase.functions.invoke('counter-offer', {
+      body: { offer_id: this.id, amount: newAmount },
+    });
     if (error) throw error;
-    return Offer.fromRow(data);
+    if (data.error) throw new Error(JSON.stringify(data));
+    
+    // Update local state based on response
+    this.amount = data.amount;
+    this.proposedBy = data.proposed_by;
+    
+    return this;
   }
 
   static fromRow(row: Record<string, unknown>): Offer {
@@ -182,6 +186,7 @@ export class Offer {
       amount:       row.amount as number,
       scope:        (row.scope as string) ?? null,
       status:       row.status as OfferStatus,
+      proposedBy:   (row.proposed_by as 'customer' | 'freelancer') || 'customer',
       expiresAt:    (row.expires_at as string) ?? null,
       createdAt:    row.created_at as string,
     });

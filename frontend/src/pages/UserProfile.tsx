@@ -6,8 +6,11 @@ interface UserProfileProps {
   onViewTransactions: () => void;
 }
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { Offer, Transaction } from '../models/marketplace/Marketplace';
+import { cn } from '../lib/utils';
+import { OfferCard } from '../components/OfferCard';
 import { ReceiptText } from 'lucide-react';
 
 export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange, onViewTransactions }: UserProfileProps) => {
@@ -20,6 +23,88 @@ export const UserProfile = ({ user, onLogout, onGoToDashboard, onRoleChange, onV
   const isFreelancer = user.role?.toLowerCase() === 'freelancer';
   const hasFreelancerProfile = user.hourlyRate != null && user.skills?.length > 0;
   const hasFreelancerEnrollment = Boolean(user.freelancerEnrolled) || hasFreelancerProfile;
+  const [offerHistory, setOfferHistory] = useState<Offer[]>([]);
+  const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState('');
+
+  useEffect(() => {
+    const loadHistory = async () => {
+      if (!user.id || isFreelancer) {
+        setOfferHistory([]);
+        setTransactionHistory([]);
+        setHistoryError('');
+        setHistoryLoading(false);
+        return;
+      }
+
+      setHistoryLoading(true);
+      setHistoryError('');
+
+      try {
+        const [{ data: offerRows, error: offerError }, { data: transactionRows, error: transactionError }] = await Promise.all([
+          supabase
+            .from('offers')
+            .select('*, listings(title)')
+            .eq('customer_id', user.id)
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('transactions')
+            .select('*')
+            .eq('customer_id', user.id)
+            .order('completed_at', { ascending: false }),
+        ]);
+
+        if (offerError) throw offerError;
+        if (transactionError) throw transactionError;
+
+        setOfferHistory((offerRows ?? []).map((row: Record<string, unknown>) => Offer.fromRow(row)));
+        setTransactionHistory((transactionRows ?? []).map((row: Record<string, unknown>) => Transaction.fromRow(row)));
+      } catch (err: any) {
+        setHistoryError(err.message ?? 'Failed to load your offer history');
+      } finally {
+        setHistoryLoading(false);
+      }
+    };
+
+    loadHistory();
+  }, [user.id, isFreelancer]);
+
+  const pendingOfferCount = offerHistory.filter(offer => offer.status === 'pending').length;
+  const completedTransactionCount = transactionHistory.length;
+
+  const handleAccept = async (offer: Offer) => {
+    try {
+      await offer.accept();
+      // Remove from pending offers since it's now active/completed
+      setOfferHistory(prev => prev.filter(o => o.id !== offer.id));
+    } catch (e: any) { 
+      console.error(e); 
+      setError(e.message || 'Failed to accept offer');
+    }
+  };
+
+  const handleReject = async (offer: Offer) => {
+    try {
+      await offer.reject();
+      // Remove from pending offers
+      setOfferHistory(prev => prev.filter(o => o.id !== offer.id));
+    } catch (e: any) { 
+      console.error(e); 
+      setError(e.message || 'Failed to reject offer');
+    }
+  };
+
+  const handleCounter = async (offer: Offer, newAmount: number) => {
+    try {
+      await offer.counter(newAmount);
+      // Wait for Supabase Realtime to update the record automatically, 
+      // or optionally re-fetch local state
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
+  };
 
   const handleRoleSwitch = async (newRole: 'customer' | 'freelancer') => {
     if (newRole === 'freelancer' && !hasFreelancerEnrollment && !isEnrolling) {
