@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Star, MapPin, Clock, Briefcase, BarChart2, CheckCircle } from 'lucide-react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Star, MapPin, Clock, Briefcase, BarChart2, CheckCircle, Eye, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 import { getPricingReport } from '../data/mockData';
 import { PricingReportModal } from '../components/PricingReportModal';
 import { OfferModal } from '../components/OfferModal';
+import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal';
 import { useAuth } from '../hooks/useAuth';
 import { CustomerUser } from '../models/users/UserSubclasses';
 import { supabase } from '../lib/supabaseClient';
 import type { Listing, PricingModel, PricingReport } from '../types';
+import { AnimatePresence } from 'motion/react';
 
 interface ProfileDetails {
   bio: string;
@@ -22,9 +24,13 @@ interface ProfileDetails {
 export const FreelancerProfile = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isPreview = searchParams.get('preview') === 'true';
   const { user } = useAuth();
   const [reportOpen, setReportOpen] = useState(false);
   const [offerOpen, setOfferOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [listing, setListing] = useState<Listing | null>(null);
   const [profile, setProfile] = useState<ProfileDetails | null>(null);
   const [report, setReport] = useState<PricingReport | null>(null);
@@ -159,10 +165,39 @@ export const FreelancerProfile = () => {
     fetchListing();
   }, [id]);
 
+  const handleDeleteConfirm = async () => {
+    if (!id) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase.from('listings').delete().eq('id', id);
+      if (error) throw error;
+      navigate('/dashboard');
+    } catch (e) { console.error(e); } finally {
+      setDeleting(false);
+      setDeleteOpen(false);
+    }
+  };
+
   if (loading) return null;
   if (!listing || !profile) return null;
 
   return (
+    <>
+      {isPreview && (
+        <div className="w-full bg-shadow-grey text-white border-b-4 border-black px-8 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest">
+            <Eye size={14} />
+            Preview — This is how customers see your listing
+          </div>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest hover:text-vibrant-coral transition-colors group"
+          >
+            <ArrowLeft size={12} className="group-hover:-translate-x-1 transition-transform" />
+            Back to Dashboard
+          </button>
+        </div>
+      )}
     <main className="flex-1 max-w-7xl mx-auto w-full px-8 py-20">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
@@ -171,11 +206,11 @@ export const FreelancerProfile = () => {
       >
         {/* Back nav */}
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => isPreview ? navigate('/dashboard') : navigate(-1)}
           className="flex items-center gap-2 font-mono text-xs uppercase mb-10 hover:text-vibrant-coral transition-colors group"
         >
           <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-          Back to search
+          {isPreview ? 'Back to Dashboard' : 'Back to search'}
         </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
@@ -258,6 +293,22 @@ export const FreelancerProfile = () => {
 
           {/* ── Right column ─────────────────────────────────────── */}
           <div className="space-y-6">
+
+            {/* Delete Listing CTA (preview mode only) */}
+            {isPreview && (
+              <div className="border-4 border-black bg-white shadow-brutal p-6">
+                <h2 className="font-display text-xl uppercase tracking-tighter mb-2">Manage Listing</h2>
+                <p className="font-mono text-xs opacity-70 mb-5 leading-relaxed">
+                  Permanently remove this listing. This action cannot be undone.
+                </p>
+                <button
+                  onClick={() => setDeleteOpen(true)}
+                  className="w-full py-3 bg-rosy-copper text-white border-2 border-black font-display uppercase text-sm flex items-center justify-center gap-2 shadow-brutal-sm hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"
+                >
+                  <Trash2 size={14} /> Delete Listing
+                </button>
+              </div>
+            )}
 
             {/* Make an Offer CTA */}
             {user instanceof CustomerUser && (
@@ -367,6 +418,19 @@ export const FreelancerProfile = () => {
           onClose={() => setOfferOpen(false)}
         />
       )}
+
+      <AnimatePresence>
+        {deleteOpen && (
+          <ConfirmDeleteModal
+            title="Delete Listing"
+            message={`Are you sure you want to delete "${listing.name}"? This cannot be undone.`}
+            onConfirm={handleDeleteConfirm}
+            onCancel={() => setDeleteOpen(false)}
+            loading={deleting}
+          />
+        )}
+      </AnimatePresence>
     </main>
+    </>
   );
 };

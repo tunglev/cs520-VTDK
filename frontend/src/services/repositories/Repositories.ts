@@ -202,6 +202,31 @@ export class TransactionRepository {
     return (data ?? []).map(Transaction.fromRow);
   }
 
+  /**
+   * Like getByUser but joins listings (title) and both user records
+   * (display names) so the history page can render without additional
+   * round-trips.
+   */
+  async getByUserEnriched(userId: string): Promise<Transaction[]> {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select(`
+        *,
+        listing:listings(title),
+        freelancer:users!transactions_freelancer_id_fkey(id, business_name, role),
+        customer:users!transactions_customer_id_fkey(id, business_name, role)
+      `)
+      .or(`customer_id.eq.${userId},freelancer_id.eq.${userId}`)
+      .order('completed_at', { ascending: false, nullsFirst: true });
+    if (error) throw error;
+    return (data ?? []).map((row: any) => Transaction.fromRow({
+      ...row,
+      listing_title:   row.listing?.title ?? null,
+      freelancer_name: row.freelancer?.business_name ?? null,
+      customer_name:   row.customer?.business_name ?? null,
+    }));
+  }
+
   async getByCategory(categoryId: string): Promise<Transaction[]> {
     const { data, error } = await supabase
       .from('transactions')

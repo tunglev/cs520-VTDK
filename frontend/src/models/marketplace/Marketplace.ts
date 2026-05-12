@@ -63,17 +63,25 @@ export class ServiceListing {
     return this.pricingStrategy.calculatePrice();
   }
 
-  // Patches the listing in the database and updates local state.
   async updateListing(patch: Partial<{ title: string; description: string; isActive: boolean }>) {
+    const dbPatch: Record<string, unknown> = {};
+    if (patch.title !== undefined) dbPatch.title = patch.title;
+    if (patch.description !== undefined) dbPatch.description = patch.description;
+    if (patch.isActive !== undefined) dbPatch.is_active = patch.isActive;
     const { data, error } = await supabase
       .from('listings')
-      .update(patch)
+      .update(dbPatch)
       .eq('id', this.id)
       .select()
       .single();
     if (error) throw error;
     Object.assign(this, ServiceListing.fromRow(data));
     return this;
+  }
+
+  async deleteListing(): Promise<void> {
+    const { error } = await supabase.from('listings').delete().eq('id', this.id);
+    if (error) throw error;
   }
 
   static fromRow(
@@ -191,6 +199,10 @@ export class Transaction {
   categoryId: string;
   finalPrice: number;
   completedAt: string | null;
+  // Optional denormalized fields populated by enriched queries
+  listingTitle?: string;
+  freelancerName?: string;
+  customerName?: string;
 
   constructor(data: {
     id: string;
@@ -201,27 +213,57 @@ export class Transaction {
     categoryId: string;
     finalPrice: number;
     completedAt: string | null;
+    listingTitle?: string;
+    freelancerName?: string;
+    customerName?: string;
   }) {
-    this.id           = data.id;
-    this.offerId      = data.offerId;
-    this.customerId   = data.customerId;
-    this.freelancerId = data.freelancerId;
-    this.listingId    = data.listingId;
-    this.categoryId   = data.categoryId;
-    this.finalPrice   = data.finalPrice;
-    this.completedAt  = data.completedAt;
+    this.id             = data.id;
+    this.offerId        = data.offerId;
+    this.customerId     = data.customerId;
+    this.freelancerId   = data.freelancerId;
+    this.listingId      = data.listingId;
+    this.categoryId     = data.categoryId;
+    this.finalPrice     = data.finalPrice;
+    this.completedAt    = data.completedAt;
+    this.listingTitle   = data.listingTitle;
+    this.freelancerName = data.freelancerName;
+    this.customerName   = data.customerName;
+  }
+
+  /**
+   * Marks the transaction as complete via the `complete-transaction` Edge Function.
+   * Only the customer may call this; the function enforces that server-side.
+   * Updates local state on success so callers don't need to refetch.
+   */
+  async markComplete(): Promise<void> {
+    const { data, error } = await supabase.functions.invoke('complete-transaction', {
+      body: { transaction_id: this.id },
+    });
+    if (error) throw error;
+    if (data?.transaction?.completed_at) {
+      this.completedAt = data.transaction.completed_at;
+    } else {
+      this.completedAt = new Date().toISOString();
+    }
+  }
+
+  get isComplete(): boolean {
+    return this.completedAt !== null;
   }
 
   static fromRow(row: Record<string, unknown>): Transaction {
     return new Transaction({
-      id:           row.id as string,
-      offerId:      row.offer_id as string,
-      customerId:   row.customer_id as string,
-      freelancerId: row.freelancer_id as string,
-      listingId:    row.listing_id as string,
-      categoryId:   row.category_id as string,
-      finalPrice:   row.final_price as number,
-      completedAt:  (row.completed_at as string) ?? null,
+      id:             row.id as string,
+      offerId:        row.offer_id as string,
+      customerId:     row.customer_id as string,
+      freelancerId:   row.freelancer_id as string,
+      listingId:      row.listing_id as string,
+      categoryId:     row.category_id as string,
+      finalPrice:     row.final_price as number,
+      completedAt:    (row.completed_at as string) ?? null,
+      listingTitle:   (row.listing_title as string) ?? undefined,
+      freelancerName: (row.freelancer_name as string) ?? undefined,
+      customerName:   (row.customer_name as string) ?? undefined,
     });
   }
 }
