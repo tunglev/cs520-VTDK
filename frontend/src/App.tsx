@@ -28,7 +28,7 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         setUser(mapSupabaseUser(session.user));
-        if (event === 'SIGNED_IN') navigate('/');
+        if (event === 'SIGNED_IN' && window.location.pathname === '/auth') navigate('/');
       } else {
         setUser(null);
       }

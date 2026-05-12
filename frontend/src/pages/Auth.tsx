@@ -147,19 +147,19 @@ export const AuthPage = ({ onLoginSuccess }: AuthPageProps) => {
               />
             </div>
 
-            <div className="pt-6">
-              <button type="submit" className="w-full py-4 bg-black text-white font-display uppercase border-2 border-black shadow-brutal-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
+            <div className="pt-6 flex gap-4">
+              <button
+                type="button"
+                onClick={() => { setError(''); setIsOnboarding(false); }}
+                className="flex-1 py-4 bg-white text-black font-display uppercase border-2 border-black shadow-brutal-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
+              >
+                Back
+              </button>
+              <button type="submit" className="flex-1 py-4 bg-black text-white font-display uppercase border-2 border-black shadow-brutal-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
                 Complete Profile
               </button>
             </div>
           </form>
-          <button
-            type="button"
-            onClick={() => { setError(''); setIsOnboarding(false); }}
-            className="mt-4 w-full py-4 bg-white text-black font-display uppercase border-2 border-black shadow-brutal-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
-          >
-            Back
-          </button>
         </div>
       </div>
     );

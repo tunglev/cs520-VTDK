@@ -63,17 +63,25 @@ export class ServiceListing {
     return this.pricingStrategy.calculatePrice();
   }
 
-  // Patches the listing in the database and updates local state.
   async updateListing(patch: Partial<{ title: string; description: string; isActive: boolean }>) {
+    const dbPatch: Record<string, unknown> = {};
+    if (patch.title !== undefined) dbPatch.title = patch.title;
+    if (patch.description !== undefined) dbPatch.description = patch.description;
+    if (patch.isActive !== undefined) dbPatch.is_active = patch.isActive;
     const { data, error } = await supabase
       .from('listings')
-      .update(patch)
+      .update(dbPatch)
       .eq('id', this.id)
       .select()
       .single();
     if (error) throw error;
     Object.assign(this, ServiceListing.fromRow(data));
     return this;
+  }
+
+  async deleteListing(): Promise<void> {
+    const { error } = await supabase.from('listings').delete().eq('id', this.id);
+    if (error) throw error;
   }
 
   static fromRow(
