@@ -14,7 +14,7 @@ export const Navbar = ({ user }: NavbarProps) => {
         className="text-3xl font-display uppercase tracking-tighter flex items-center gap-2"
       >
         <div className="w-8 h-8 bg-vibrant-coral border-2 border-black rounded-sm" />
-        VTDK
+        Fairlance
       </Link>
       <div className="hidden md:flex gap-8 font-display uppercase text-sm tracking-widest">
         <a href="#" className="hover:text-vibrant-coral transition-colors">Find Talent</a>
