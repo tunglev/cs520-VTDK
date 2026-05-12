@@ -1,5 +1,5 @@
 import { useState, useEffect, type ElementType, type FormEvent } from 'react';
-import { Plus, ToggleLeft, ToggleRight, CheckCircle, XCircle, Clock, DollarSign, Briefcase, TrendingUp, Eye, Trash2 } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight, CheckCircle, XCircle, Clock, DollarSign, Briefcase, TrendingUp, Eye, Trash2, Pencil } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
@@ -35,11 +35,13 @@ const ListingCard = ({
   listing,
   onToggle,
   onView,
+  onEdit,
   onDelete,
 }: {
   listing: ServiceListing;
   onToggle: (l: ServiceListing) => void | Promise<void>;
   onView: (l: ServiceListing) => void;
+  onEdit: (l: ServiceListing) => void;
   onDelete: (l: ServiceListing) => void;
 }) => (
   <motion.div
@@ -66,6 +68,13 @@ const ListingCard = ({
           title="Preview listing"
         >
           <Eye size={20} />
+        </button>
+        <button
+          onClick={() => onEdit(listing)}
+          className="text-black/60 hover:text-black transition-colors"
+          title="Edit listing"
+        >
+          <Pencil size={20} />
         </button>
         <button
           onClick={() => onDelete(listing)}
@@ -273,6 +282,193 @@ const NewListingModal = ({
 };
 
 
+// ── Edit Listing Modal ────────────────────────────────────────
+type PricingModelRow = { strategy_type: 'fixed' | 'hourly' | 'project'; base_price: number };
+
+const EditListingModal = ({
+  listing,
+  initialPricingModels,
+  onSaved,
+  onClose,
+}: {
+  listing: ServiceListing;
+  initialPricingModels: PricingModelRow[];
+  onSaved: () => void;
+  onClose: () => void;
+}) => {
+  const [title, setTitle] = useState(listing.title);
+  const [description, setDescription] = useState(listing.description);
+  const [categoryId, setCategoryId] = useState(listing.categoryId);
+  const [pricingModels, setPricingModels] = useState<PricingModelRow[]>(
+    initialPricingModels.length > 0
+      ? initialPricingModels.map(pm => ({ strategy_type: pm.strategy_type, base_price: pm.base_price }))
+      : [{ strategy_type: 'hourly', base_price: 0 }]
+  );
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    supabase.from('categories').select('id, name').order('name').then(({ data }) => {
+      if (data) setCategories(data);
+    });
+  }, []);
+
+  const addPricingRow = () =>
+    setPricingModels(prev => [...prev, { strategy_type: 'hourly', base_price: 0 }]);
+
+  const removePricingRow = (index: number) =>
+    setPricingModels(prev => prev.filter((_, i) => i !== index));
+
+  const updatePricingRow = (index: number, field: keyof PricingModelRow, value: string | number) =>
+    setPricingModels(prev => prev.map((row, i) => i === index ? { ...row, [field]: value } : row));
+
+  const handleSave = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) { setError('Title is required'); return; }
+    setLoading(true);
+    setError('');
+    try {
+      const body: Record<string, unknown> = {
+        id: listing.id,
+        title: title.trim(),
+        description: description.trim(),
+        category_id: categoryId,
+        pricing_models: pricingModels.map(pm => ({
+          strategy_type: pm.strategy_type,
+          base_price: Number(pm.base_price),
+        })),
+      };
+      const { error: err } = await supabase.functions.invoke('manage-listing', { body, method: 'PUT' });
+      if (err) throw err;
+      onSaved();
+      onClose();
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to save listing');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.form
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="bg-bone border-4 border-black shadow-brutal w-full max-w-md p-8 max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+        onSubmit={handleSave}
+      >
+        <div className="font-mono text-[10px] uppercase tracking-widest opacity-60 mb-1">Edit Listing</div>
+        <h2 className="font-display uppercase text-2xl tracking-tighter mb-6">Update Service</h2>
+
+        <div className="space-y-4">
+          <div>
+            <label className="font-display uppercase text-[10px] tracking-widest block mb-1">Title *</label>
+            <input
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              className="w-full border-2 border-black bg-white px-4 py-3 font-mono text-sm focus:outline-none focus:border-vibrant-coral"
+            />
+          </div>
+          <div>
+            <label className="font-display uppercase text-[10px] tracking-widest block mb-1">Category</label>
+            <select
+              value={categoryId}
+              onChange={e => setCategoryId(e.target.value)}
+              className="w-full border-2 border-black bg-white px-4 py-3 font-mono text-sm focus:outline-none focus:border-vibrant-coral"
+            >
+              <option value="">Select a category...</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="font-display uppercase text-[10px] tracking-widest block mb-1">Description</label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              rows={3}
+              className="w-full border-2 border-black bg-white px-4 py-3 font-mono text-sm focus:outline-none focus:border-vibrant-coral resize-none"
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="font-display uppercase text-[10px] tracking-widest">Pricing Options</label>
+              <button
+                type="button"
+                onClick={addPricingRow}
+                className="font-mono text-[10px] uppercase text-vibrant-coral hover:underline"
+              >
+                + Add option
+              </button>
+            </div>
+            <div className="space-y-2">
+              {pricingModels.map((row, i) => (
+                <div key={i} className="flex gap-2 items-center">
+                  <select
+                    value={row.strategy_type}
+                    onChange={e => updatePricingRow(i, 'strategy_type', e.target.value)}
+                    className="flex-1 border-2 border-black bg-white px-3 py-2 font-mono text-sm focus:outline-none focus:border-vibrant-coral"
+                  >
+                    <option value="hourly">Hourly</option>
+                    <option value="fixed">Fixed</option>
+                    <option value="project">Project</option>
+                  </select>
+                  <div className="flex items-center border-2 border-black bg-white">
+                    <span className="px-2 font-mono text-sm opacity-50">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={row.base_price}
+                      onChange={e => updatePricingRow(i, 'base_price', e.target.value)}
+                      className="w-20 py-2 pr-3 font-mono text-sm focus:outline-none"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removePricingRow(i)}
+                    disabled={pricingModels.length === 1}
+                    className="text-rosy-copper/60 hover:text-rosy-copper disabled:opacity-20 transition-colors font-mono text-lg leading-none"
+                    title="Remove pricing option"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mt-4 font-mono text-xs text-vibrant-coral border-2 border-vibrant-coral px-3 py-2">
+            {error}
+          </div>
+        )}
+
+        <div className="flex gap-3 mt-6">
+          <button type="button" onClick={onClose}
+            className="flex-1 py-3 border-2 border-black font-display uppercase text-sm hover:bg-black hover:text-white transition-colors">
+            Cancel
+          </button>
+          <button type="submit" disabled={loading}
+            className="flex-1 py-3 bg-shadow-grey text-white border-2 border-black font-display uppercase text-sm shadow-brutal-sm hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all disabled:opacity-50">
+            {loading ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
+      </motion.form>
+    </motion.div>
+  );
+};
+
 // ── Main Dashboard ────────────────────────────────────────────
 export const FreelancerDashboard = ({ user, onLogout, onSwitchToClient }: FreelancerDashboardProps) => {
   const [listings, setListings] = useState<ServiceListing[]>([]);
@@ -281,6 +477,8 @@ export const FreelancerDashboard = ({ user, onLogout, onSwitchToClient }: Freela
   const [showNewListing, setShowNewListing] = useState(false);
   const [activeTab, setActiveTab] = useState<'listings' | 'offers'>('listings');
   const [listingToDelete, setListingToDelete] = useState<ServiceListing | null>(null);
+  const [listingToEdit, setListingToEdit] = useState<ServiceListing | null>(null);
+  const [pricingModelsMap, setPricingModelsMap] = useState<Record<string, PricingModelRow[]>>({});
   const [deleting, setDeleting] = useState(false);
 
   const navigate = useNavigate();
@@ -306,6 +504,14 @@ export const FreelancerDashboard = ({ user, onLogout, onSwitchToClient }: Freela
           .order('created_at', { ascending: false }),
       ]);
 
+      const rawMap: Record<string, PricingModelRow[]> = {};
+      (listingRows ?? []).forEach(r => {
+        rawMap[r.id] = (r.pricing_models ?? []).map((pm: any) => ({
+          strategy_type: pm.strategy_type,
+          base_price: pm.base_price,
+        }));
+      });
+      setPricingModelsMap(rawMap);
       setListings((listingRows ?? []).map(r =>
         ServiceListing.fromRow(r, r.pricing_models?.[0] ?? null)
       ));
@@ -431,8 +637,8 @@ export const FreelancerDashboard = ({ user, onLogout, onSwitchToClient }: Freela
               </div>
             ) : (
               <motion.div layout className="grid gap-4 md:grid-cols-2">
-                {listings.map(l => (
-                  <ListingCard key={l.id} listing={l} onToggle={handleToggle} onView={handleViewListing} onDelete={setListingToDelete} />
+                {listings.map(listing => (
+                  <ListingCard key={listing.id} listing={listing} onToggle={handleToggle} onView={handleViewListing} onEdit={item => setListingToEdit(item)} onDelete={item => setListingToDelete(item)} />
                 ))}
               </motion.div>
             )}
@@ -481,6 +687,18 @@ export const FreelancerDashboard = ({ user, onLogout, onSwitchToClient }: Freela
             onConfirm={handleDeleteConfirm}
             onCancel={() => setListingToDelete(null)}
             loading={deleting}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Edit Listing Modal */}
+      <AnimatePresence>
+        {listingToEdit && (
+          <EditListingModal
+            listing={listingToEdit}
+            initialPricingModels={pricingModelsMap[listingToEdit.id] ?? []}
+            onSaved={fetchData}
+            onClose={() => setListingToEdit(null)}
           />
         )}
       </AnimatePresence>
