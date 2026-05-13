@@ -1,5 +1,7 @@
 # Build
 
+A root `Makefile` wraps all common build, dev, test, and deploy workflows. Run `make help` to see every available target. The sections below document the underlying commands for reference.
+
 This project has three services. Each has its own build process; they are independent of each other.
 
 ## Prerequisites

@@ -39,6 +39,8 @@ freelance-marketplace/
 
 ## Quick start
 
+> A root `Makefile` wraps all common workflows. Run `make help` to see every available target, or `make setup` to install all dependencies in one step.
+
 ### Prerequisites
 
 - Node.js v18+
