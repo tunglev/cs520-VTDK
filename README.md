@@ -42,9 +42,10 @@ freelance-marketplace/
 ### Prerequisites
 
 - Node.js v18+
-- Python 3.11+
+- Python 3.11 (specifically 3.11.x — 3.12+ is not compatible with the pinned ML dependencies)
 - Docker Desktop (for local Supabase)
 - Supabase CLI: `brew install supabase/tap/supabase`
+- Deno: `brew install deno` (for running Supabase Edge Function tests)
 
 ### 1. Clone and install
 
@@ -190,7 +191,7 @@ See each service's README for service-specific setup, conventions, and testing i
 
 ## Backend setup
 
-The ml-service backend is intended to run on Python 3.11. The pinned machine-learning dependencies in [ml-service/requirements.txt](ml-service/requirements.txt) are not a good match for Python 3.13, so create the virtual environment with Python 3.11 before running `pip install -r requirements.txt`.
+The ml-service backend requires Python 3.11.x. The pinned ML dependencies (`scikit-learn`, `prophet`, `sentence-transformers`) are not compatible with Python 3.12 or 3.13, so create the virtual environment with Python 3.11 before running `pip install -r requirements.txt`.
 
 If you use pyenv, the repository includes [ml-service/.python-version](ml-service/.python-version) to point tools at the supported interpreter.
 

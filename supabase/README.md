@@ -42,6 +42,7 @@ supabase/
 
 - Docker Desktop running
 - Supabase CLI: `brew install supabase/tap/supabase`
+- Deno: `brew install deno` (required for running Edge Function tests)
 
 
 ### Link to your cloud project

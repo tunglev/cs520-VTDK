@@ -35,6 +35,13 @@ ml-service/
 └── railway.toml
 ```
 
+## Prerequisites
+
+- Python 3.11 (specifically 3.11.x — 3.12+ is not compatible with the pinned ML dependencies; use `pyenv install 3.11.9`)
+- Docker Desktop (for building the production image)
+
+If you use pyenv, `ml-service/.python-version` pins the correct interpreter automatically.
+
 ## Setup
 
 ### Local development

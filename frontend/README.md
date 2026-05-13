@@ -2,6 +2,10 @@
 
 React + TypeScript client. Talks to Supabase for all data operations and to the FastAPI ML service for pricing intelligence.
 
+## Prerequisites
+
+- Node.js v18+
+
 ## Stack
 
 - **React 18** + TypeScript
