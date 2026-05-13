@@ -8,23 +8,49 @@ The modern gig economy suffers from a significant lack of price transparency, cr
 
 The primary stakeholders for this system include independent contractors across various sectors, ranging from digital service like web development to physical trades like landscaping, and the diverse client base seeking their expertise. For the Five College community, this platform serves as a vital economic bridge. It allows students to monetize their flourishing skills at fair campus rates while providing local residents and departments with a transparent way to hire student talent. The system fosters a localized micro-economy, ensuring that the wealth of talent within the Five Colleges is accessible, fairly compensated, and driven by community-specific pricing trends.
 
-## Why this system is needed:
+## Why this system is needed
 
-**For Freelancers**: without data, they often underprice themselves to remain competitive and leading to burnout, or overpriced and lost lead.
-**For Customers**: Price variance across similar services creates distrust. A pricing report acts as a neutral third party that validates the investment.
-For the local economy: standard platforms are globalized, often suppressing local wages. A localized tool keeps commerce within the community by reflecting local cost-of-living and skill levels
+**For Freelancers:** without market data, they either underprice themselves to stay competitive (leading to burnout) or overprice and lose leads.
+**For Customers:** price variance across similar services creates distrust. A pricing report acts as a neutral third party that validates the investment.
+**For the local economy:** standard platforms are globalized, often suppressing local wages. A localized tool keeps commerce within the community by reflecting local cost-of-living and skill levels.
 
 ## What this is
 
 A three-service monorepo:
 
-| Service | Stack | Hosted on |
+| Service | Stack | Intended platform |
 |---|---|---|
 | `frontend/` | React + TypeScript, Recharts | Vercel |
 | `supabase/` | PostgreSQL, Auth, Realtime, Edge Functions | Supabase (AWS) |
 | `ml-service/` | Python, FastAPI, scikit-learn, Hugging Face | Railway |
 
 The core differentiator is the **Market Comparator** — an analytics tool that aggregates anonymized transaction data to show freelancers and customers real pricing benchmarks for any service category.
+
+## Features
+
+### Implemented
+
+| Feature | Description |
+|---|---|
+| **Auth + roles** | Email/password sign-up and sign-in via Supabase Auth. Users are assigned a `customer` or `freelancer` role; admins have a separate elevated role. |
+| **Listings marketplace** | Freelancers create, edit, and deactivate service listings with one or more pricing models (fixed, hourly, project-based). Customers browse and filter listings by category. |
+| **Offers + counter-offers** | Customers send offers on listings; freelancers accept, reject, or counter. Either party can counter until one side accepts, creating a negotiation cycle. |
+| **Transactions** | Accepting an offer creates a transaction. The customer marks it complete when the work is done, locking in the final price. |
+| **Reviews** | Customers submit star-rated reviews (communication, quality, speed) after completing a transaction. Freelancers can post a one-time response. |
+| **Market Comparator** | ML-powered pricing reports show market min, median, max, a price distribution chart, and a scatter plot of listings — giving both parties a neutral benchmark before negotiating. |
+| **Price prediction** | The ML service predicts a suggested price range for any category + location + rating combination using a trained GradientBoostingRegressor (falls back to category heuristics). |
+| **Anomaly detection** | Transaction prices are screened for outliers via Isolation Forest, surfaced in the pricing report. |
+| **Service categorization** | When a freelancer creates a listing, the description is semantically validated against the chosen category using a sentence-transformer model. |
+| **Real-time chat** | Customers and freelancers can message each other in per-pair conversations. Messages sync in real time via Supabase Realtime. |
+| **Inactivity logout** | Users are automatically signed out after 15 minutes of inactivity. |
+| **Freelancer profiles** | Public freelancer profile pages show bio, service area, listings, and aggregated review ratings. |
+
+### Planned (not yet implemented)
+
+| Feature | Priority |
+|---|---|
+| Demand forecasting | P2 — Prophet-based weekly demand predictions per category (stub exists in ML service) |
+| Recommendation algorithm | P2 — personalized listing recommendations based on browse history |
 
 ## Project structure
 
@@ -66,30 +92,44 @@ That's it — one file, all three services read from it. See `.env.example` for 
 
 ### 3. Start all three services
 
+Each service needs its own terminal. The Makefile has a shortcut for each:
+
+```bash
+# Terminal 1
+make dev-supabase   # starts Supabase stack + applies migrations + serves Edge Functions
+
+# Terminal 2
+make dev-ml         # starts ML service on port 8000
+
+# Terminal 3
+make dev-frontend   # starts frontend dev server on port 3000
+```
+
+Run `make dev` for a reminder of the above with the exact URLs printed out.
+
+<details>
+<summary>Manual commands (without Make)</summary>
+
 **Terminal 1 — Supabase:**
 ```bash
-cd supabase
 supabase start
-supabase db reset        # applies all migrations + seed data
-supabase functions serve # serves Edge Functions locally
+supabase db reset
+supabase functions serve --env-file=.env
 ```
 
 **Terminal 2 — ML service:**
 ```bash
-cd ml-service
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+cd ml-service && source .venv/bin/activate
 uvicorn app.main:app --reload --port 8000
 ```
 
 **Terminal 3 — Frontend:**
 ```bash
-cd frontend
-npm install
-npm run dev
+cd frontend && npm run dev
 ```
+</details>
 
-The app will be running at `http://localhost:5173`.
+The app will be running at `http://localhost:3000`.
 
 ## Environment variables
 
@@ -106,22 +146,29 @@ A single root `.env` file (copied from `.env.example`) configures all three serv
 
 > **Never commit `.env`.** The only env file that belongs in the repo is `.env.example`.
 
-## Feature priorities
-
-| Priority | Features |
-|---|---|
-| P0 | Auth + roles, listings marketplace, transactions, pricing reports |
-| P1 | Real-time chat, counteroffering, geographic filtering, reviews |
-| P2 | Demand forecasting, recommendation algorithm |
-
 ## Deployment
 
-| Service | Platform | Trigger |
+> **This project has not yet been deployed to production.** The instructions below describe the intended production setup for when deployment is configured.
+
+| Service | Intended platform | Trigger |
 |---|---|---|
 | Frontend | Vercel | Auto-deploy on push to `main` |
-| ML service | Railway | Auto-deploy on push to `main` |
+| ML service | Railway | Auto-deploy on push to `main` (builds from `ml-service/Dockerfile`) |
 | DB migrations | Supabase | Manual: `supabase db push` |
 | Edge Functions | Supabase | Manual: `supabase functions deploy <name>` |
+
+Use `make deploy` to push DB migrations and deploy all Edge Functions in one step. See [`BUILD.md`](./BUILD.md) for the full deploy reference.
+
+### Building the ML service Docker image locally
+
+The ML service ships as a Docker image. To build and run it locally:
+
+```bash
+make build-docker                          # builds image tagged fairlance-ml
+docker run --env-file .env -p 8000:8000 fairlance-ml
+```
+
+This mirrors exactly what Railway runs in production.
 
 ## Testing
 
