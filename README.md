@@ -190,6 +190,7 @@ See each service's README for service-specific setup, conventions, and testing i
 - [`ml-service/README.md`](./ml-service/README.md)
 - [`BUILD.md`](./BUILD.md) — build and deploy reference for all three services
 - [`TEST.md`](./TEST.md) — test commands, coverage tables, and setup notes
+- [`API.md`](./API.md) — full API reference: ML service endpoints, Edge Functions, and PostgREST schema
 
 ## Backend setup
 
