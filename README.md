@@ -185,6 +185,8 @@ See each service's README for service-specific setup, conventions, and testing i
 - [`frontend/README.md`](./frontend/README.md)
 - [`supabase/README.md`](./supabase/README.md)
 - [`ml-service/README.md`](./ml-service/README.md)
+- [`BUILD.md`](./BUILD.md) — build and deploy reference for all three services
+- [`TEST.md`](./TEST.md) — test commands, coverage tables, and setup notes
 
 ## Backend setup
 
