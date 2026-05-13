@@ -18,8 +18,9 @@ Copy `.env.example` to `.env` at the repo root and fill in your values — no pe
 |---|---|---|
 | `SUPABASE_URL` | `import.meta.env.VITE_SUPABASE_URL` | Supabase project URL (auth, PostgREST, Realtime) |
 | `SUPABASE_ANON_KEY` | `import.meta.env.VITE_SUPABASE_ANON_KEY` | Publishable key — safe to expose to the browser |
+| `ML_SERVICE_URL` | `import.meta.env.VITE_ML_SERVICE_URL` | ML microservice base URL — used directly by `mlServiceClient` for price prediction, anomaly detection, and service categorization |
 
-The remapping from canonical names to `VITE_` names happens in [vite.config.ts](vite.config.ts) via `define`. The frontend calls the Supabase Edge Function for ML features — it never contacts the ML service directly.
+The remapping from canonical names to `VITE_` names happens in [vite.config.ts](vite.config.ts) via `define`.
 
 ## Testing
 

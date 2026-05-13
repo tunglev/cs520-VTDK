@@ -97,7 +97,7 @@ A single root `.env` file (copied from `.env.example`) configures all three serv
 | `SUPABASE_URL` | frontend, ml-service, Edge Functions | Supabase project URL |
 | `SUPABASE_ANON_KEY` | frontend, supabase tests | Publishable key — safe to expose to the browser |
 | `SUPABASE_SERVICE_ROLE_KEY` | ml-service, supabase tests, Edge Functions | Bypasses RLS — never expose to the browser |
-| `ML_SERVICE_URL` | supabase Edge Functions | ML microservice endpoint (called server-side only) |
+| `ML_SERVICE_URL` | frontend (as `VITE_ML_SERVICE_URL`), supabase Edge Functions | ML microservice endpoint — called directly by the frontend for price prediction/anomaly detection, and by Edge Functions for pricing reports |
 | `PORT` | ml-service | Server port (Railway sets this automatically in production) |
 | `ALLOWED_ORIGINS` | ml-service | Comma-separated CORS origins; defaults to localhost for local dev, set to your Vercel URL in production |
 
@@ -122,7 +122,7 @@ A single root `.env` file (copied from `.env.example`) configures all three serv
 
 ## Testing
 
-Each service has its own test suite. Run them independently:
+Each service has its own test suite. Run them independently. For the full test reference — prerequisites, commands, coverage tables, and troubleshooting notes — see [`TEST.md`](./TEST.md).
 
 ### Frontend (Vitest + Testing Library)
 
@@ -173,6 +173,7 @@ deno test supabase/functions/counter-offer/index.test.ts --allow-net --allow-env
 
 # complete-transaction
 deno test supabase/functions/complete-transaction/index.test.ts --allow-net --allow-env --env-file=.env
+
 ```
 
 Each test file is self-contained: it seeds its own test data and uses timestamped emails to avoid collisions across parallel runs.

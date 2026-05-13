@@ -10,7 +10,7 @@ Database schema, RLS policies, and Edge Functions for the marketplace backend.
 ```
 supabase/
 ├── config.toml        # Local dev configuration
-├── migrations/        # Numbered SQL migration files
+├── migrations/        # SQL migration files (timestamp-prefixed, applied in order)
 ├── functions/         # Edge Functions (TypeScript, Deno runtime)
 │   ├── _shared/       # Shared helpers (supabase client, cors headers)
 │   ├── generate-pricing-report/
@@ -20,6 +20,12 @@ supabase/
 │   │   ├── index.ts
 │   │   └── index.test.ts
 │   ├── submit-review/
+│   │   ├── index.ts
+│   │   └── index.test.ts
+│   ├── counter-offer/
+│   │   ├── index.ts
+│   │   └── index.test.ts
+│   ├── complete-transaction/
 │   │   ├── index.ts
 │   │   └── index.test.ts
 │   ├── get-listings/
@@ -111,7 +117,7 @@ supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ## Migrations
 
 
-Files in `migrations/` are applied in numerical order. Always create new migrations with the CLI — never edit existing ones after they've been applied to a shared environment.
+Files in `migrations/` are applied in ascending timestamp order. Always create new migrations with the CLI — never edit existing ones after they've been applied to a shared environment.
 
 
 ```bash
@@ -121,21 +127,24 @@ supabase migration new your_migration_name
 
 ### Migration order
 
+Migration files are timestamp-prefixed and applied in ascending order. The foundational schema:
 
 | File | Purpose |
 |---|---|
-| `001_create_users` | users table + role enum |
-| `002_create_categories` | service categories |
-| `003_create_listings` | freelancer listings |
-| `004_create_pricing_models` | pricing strategy options per listing |
-| `005_create_offers` | offer state machine |
-| `006_create_transactions` | completed sales |
-| `007_create_reviews` | customer reviews |
-| `008_create_review_responses` | freelancer replies to reviews |
-| `009_create_conversations` | chat conversation groups |
-| `010_create_messages` | individual chat messages |
-| `011_enable_rls_policies` | all Row Level Security policies |
-| `012_seed_data` | demo pricing data for Market Comparator |
+| `20250101000001_create_categories` | service category taxonomy |
+| `20250101000002_create_users` | users table + role enum (`customer`, `freelancer`, `admin`) |
+| `20250101000003_create_listings` | freelancer service listings |
+| `20250101000004_create_pricing_models` | pricing strategy options per listing |
+| `20250101000005_create_offers` | offer state machine |
+| `20250101000006_create_transactions` | completed sales |
+| `20250101000007_create_reviews` | customer reviews |
+| `20250101000008_create_review_responses` | freelancer replies to reviews |
+| `20250101000009_create_conversations` | chat conversation groups |
+| `20250101000010_create_messages` | individual chat messages |
+| `20250101000011_admin` | admin role setup + all Row Level Security policies |
+| `20250101000013_fix_rls_role_checks` | corrects RLS role-check expressions |
+
+Later migrations (prefixed `20260…`) apply incremental fixes (nullable FK columns, additional RLS policies, `proposed_by` column on offers). These run automatically via `supabase db reset` or `supabase db push`.
 
 
 ## Edge Functions
@@ -162,6 +171,9 @@ Functions are available at `http://localhost:54321/functions/v1/<function-name>`
 supabase functions deploy generate-pricing-report
 supabase functions deploy accept-reject-offer
 supabase functions deploy submit-review
+supabase functions deploy counter-offer
+supabase functions deploy complete-transaction
+supabase functions deploy manage-listing
 ```
 
 
@@ -212,8 +224,20 @@ deno test supabase/functions/generate-pricing-report/index.test.ts --allow-net -
 deno test supabase/functions/accept-reject-offer/index.test.ts --allow-net --allow-env --env-file=.env
 
 
+# Counter-offer
+deno test supabase/functions/counter-offer/index.test.ts --allow-net --allow-env --env-file=.env
+
+
+# Complete transaction
+deno test supabase/functions/complete-transaction/index.test.ts --allow-net --allow-env --env-file=.env
+
+
 # Review submission
 deno test supabase/functions/submit-review/index.test.ts --allow-net --allow-env --env-file=.env
+
+
+# Manage listing (create / update / delete)
+deno test supabase/functions/manage-listing/index.test.ts --allow-net --allow-env --env-file=.env
 ```
 
 
@@ -225,6 +249,9 @@ deno test supabase/functions/submit-review/index.test.ts --allow-net --allow-env
 | `generate-pricing-report` | Happy path report shape, field ordering (min ≤ median ≤ max), missing `category_id`, non-existent category, optional params, wrong HTTP method |
 | `accept-reject-offer` | Freelancer accept (+ transaction created), freelancer reject, customer forbidden, missing fields, invalid action, non-existent offer, double-accept (409), double-reject (409), wrong HTTP method |
 | `submit-review` | Happy path, duplicate review (409), rating out of range (low + high), profanity in body, incomplete transaction (409), cross-customer forbidden, non-existent transaction, missing fields, wrong HTTP method |
+| `counter-offer` | Happy path (freelancer and customer sides), non-participant forbidden, zero/negative amount (400), non-existent offer (404), counter on already-active offer (409), missing fields, wrong HTTP method |
+| `complete-transaction` | Customer successfully marks complete (+ response shape), freelancer forbidden (403), already-completed (409), non-existent transaction (404), missing `transaction_id`, missing auth header, wrong HTTP method |
+| `manage-listing` | CORS preflight (200), create listing (happy path + with pricing models), update listing fields, replace pricing models on PUT, delete listing, missing fields (400), missing auth (401), wrong HTTP method (405) |
 
 
 ### Notes
