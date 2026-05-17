@@ -64,8 +64,9 @@ export const FreelancerProfile = () => {
         const colors = ['bg-vibrant-coral', 'bg-rosy-copper', 'bg-white'];
         const mappedListing: Listing = {
           id: item.id,
-          name: item.users?.full_name || item.users?.business_name || item.title || 'Unknown Talent',
-          role: item.title || item.categories?.name || 'Freelancer',
+          name: item.title || item.categories?.name || 'Untitled Service',
+          freelancerName: item.users?.full_name || item.users?.business_name || 'Unknown Talent',
+          role: item.categories?.name || 'Freelancer',
           category: item.categories?.name || item.category_id || 'general',
           price: item.pricing_models?.[0]?.base_price || 0,
           rating: ratingData?.avg_overall ?? 0,
@@ -225,12 +226,17 @@ export const FreelancerProfile = () => {
                 "w-24 h-24 border-4 border-black shadow-brutal flex items-center justify-center text-4xl font-display shrink-0",
                 listing.color
               )}>
-                {listing.name.charAt(0)}
+                {(listing.freelancerName || listing.name).charAt(0)}
               </div>
               <div className="flex-1 min-w-0">
                 <h1 className="text-5xl font-display uppercase tracking-tighter leading-none mb-2">
                   {listing.name}
                 </h1>
+                {listing.freelancerName && (
+                  <p className="font-mono text-sm uppercase mb-1">
+                    Offered by <span className="font-bold">{listing.freelancerName}</span>
+                  </p>
+                )}
                 <p className="font-mono text-sm uppercase opacity-70 mb-4">{listing.role}</p>
                 <div className="flex flex-wrap items-center gap-4 text-xs font-mono uppercase">
                   <div className="flex items-center gap-1">

@@ -3,7 +3,7 @@ import { Search, SlidersHorizontal, X, ChevronDown, ArrowUpDown } from 'lucide-r
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { ListingCard } from '../components/ListingCard';
-import { supabase } from '../lib/supabaseClient';
+import { useListings } from '../hooks/useListings';
 import type { Listing } from '../types';
 
 type SortKey = 'relevance' | 'price_asc' | 'price_desc' | 'rating' | 'reviews';
@@ -26,8 +26,7 @@ const PRICE_RANGES = [
 
 export const FindTalentPage = () => {
   const [query, setQuery] = useState('');
-  const [listings, setListings] = useState<Listing[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { listings, loading } = useListings();
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activePriceRange, setActivePriceRange] = useState(0);
   const [sort, setSort] = useState<SortKey>('relevance');
@@ -37,38 +36,6 @@ export const FindTalentPage = () => {
 
   useEffect(() => {
     searchRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    const fetchListings = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase.functions.invoke('get-listings', { method: 'GET' });
-        if (error) throw error;
-        if (data && Array.isArray(data)) {
-          const colors = ['bg-vibrant-coral', 'bg-rosy-copper', 'bg-white'];
-          setListings(data.map((item: any) => ({
-            id: item.id,
-            name: item.users?.full_name || item.users?.business_name || item.title || 'Unknown Talent',
-            role: item.title || item.categories?.name || 'Freelancer',
-            category: (item.categories?.name || 'general').toLowerCase(),
-            price: item.pricing_models?.[0]?.base_price || 0,
-            rating: 5.0,
-            reviews: 0,
-            location: item.users?.service_area || item.users?.zip_code || 'Remote',
-            tags: item.categories?.name ? [item.categories.name] : [],
-            color: colors[Math.floor(Math.random() * colors.length)],
-            completedJobs: 0,
-            freelancerUserId: item.freelancer_id,
-          })));
-        }
-      } catch {
-        setListings([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchListings();
   }, []);
 
   // Close sort dropdown on outside click

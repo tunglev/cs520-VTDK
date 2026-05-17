@@ -2,7 +2,8 @@
 
 export interface Listing {
   id: string | number;
-  name: string;
+  name: string; // The title of the listing/service
+  freelancerName?: string; // The actual name of the freelancer
   role: string;
   category: string;
   price: number;

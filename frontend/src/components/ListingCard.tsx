@@ -16,7 +16,7 @@ export const ListingCard = ({ listing }: ListingCardProps) => (
   >
     <div className="flex justify-between items-start mb-6">
       <div className="w-16 h-16 bg-white border-2 border-black flex items-center justify-center text-2xl font-display shrink-0">
-        {listing.name.charAt(0)}
+        {(listing.freelancerName || listing.name).charAt(0)}
       </div>
       <div className="text-right">
         <div className="text-3xl font-display tracking-tighter leading-none">${listing.price}</div>
@@ -24,7 +24,10 @@ export const ListingCard = ({ listing }: ListingCardProps) => (
       </div>
     </div>
 
-    <h3 className="text-xl font-display uppercase mb-1">{listing.name}</h3>
+    <h3 className="text-xl font-display uppercase mb-1 line-clamp-1">{listing.name}</h3>
+    {listing.freelancerName && (
+      <p className="text-sm font-mono uppercase opacity-70 mb-1">by {listing.freelancerName}</p>
+    )}
     <p className="text-sm font-mono uppercase opacity-70 mb-4">{listing.role}</p>
 
     <div className="flex items-center gap-4 mb-6 text-xs font-mono uppercase">

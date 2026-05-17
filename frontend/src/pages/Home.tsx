@@ -6,57 +6,16 @@ import { PRICE_DISTRIBUTION } from '../data/mockData';
 import { PriceChart } from '../components/PriceChart';
 import { ListingCard } from '../components/ListingCard';
 import { supabase } from '../lib/supabaseClient';
-import type { Listing, PriceDistributionBucket } from '../types';
+import { useListings } from '../hooks/useListings';
+import type { PriceDistributionBucket } from '../types';
 
 export const HomePage = () => {
   const [search, setSearch] = useState('');
   const [activeRange, setActiveRange] = useState<string | null>(null);
-  const [listings, setListings] = useState<Listing[]>([]);
+  const { listings } = useListings();
   const [priceDistribution, setPriceDistribution] = useState<PriceDistributionBucket[] | undefined>(undefined);
 
   useEffect(() => {
-    const fetchListings = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('get-listings', {
-          method: 'GET',
-        });
-        if (error) throw error;
-        if (data && Array.isArray(data)) {
-          const freelancerIds = [...new Set(data.map((item: any) => item.freelancer_id).filter(Boolean))];
-          const { data: ratingsData } = await supabase
-            .from('freelancer_rating_aggregates')
-            .select('freelancer_id, avg_overall, review_count')
-            .in('freelancer_id', freelancerIds);
-
-          const ratingsMap = new Map(
-            (ratingsData ?? []).map((r: any) => [r.freelancer_id, r])
-          );
-
-          const randomColors = ['bg-vibrant-coral', 'bg-rosy-copper', 'bg-white'];
-          const dbListings: Listing[] = data.map((item: any) => {
-            const ratings = ratingsMap.get(item.freelancer_id);
-            return {
-              id: item.id,
-              name: item.users?.business_name || item.title || 'Unknown Talent',
-              role: item.title || item.categories?.name || 'Freelancer',
-              category: item.categories?.name || item.category_id || 'general',
-              price: item.pricing_models?.[0]?.base_price || 0,
-              rating: ratings?.avg_overall ?? 0,
-              reviews: ratings?.review_count ?? 0,
-              location: item.users?.service_area || item.users?.zip_code || 'Remote',
-              tags: item.categories?.name ? [item.categories.name] : [],
-              color: randomColors[Math.floor(Math.random() * randomColors.length)],
-              completedJobs: 0,
-            };
-          });
-          setListings(dbListings);
-        }
-      } catch (err) {
-        console.error('Error fetching database listings:', err);
-      }
-    };
-
-    fetchListings();
 
     supabase.functions.invoke('generate-pricing-report', {
       method: 'POST',
