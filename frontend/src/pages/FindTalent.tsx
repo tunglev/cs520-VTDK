@@ -49,7 +49,7 @@ export const FindTalentPage = () => {
           const colors = ['bg-vibrant-coral', 'bg-rosy-copper', 'bg-white'];
           setListings(data.map((item: any) => ({
             id: item.id,
-            name: item.users?.business_name || item.title || 'Unknown Talent',
+            name: item.users?.full_name || item.users?.business_name || item.title || 'Unknown Talent',
             role: item.title || item.categories?.name || 'Freelancer',
             category: (item.categories?.name || 'general').toLowerCase(),
             price: item.pricing_models?.[0]?.base_price || 0,
@@ -59,6 +59,7 @@ export const FindTalentPage = () => {
             tags: item.categories?.name ? [item.categories.name] : [],
             color: colors[Math.floor(Math.random() * colors.length)],
             completedJobs: 0,
+            freelancerUserId: item.freelancer_id,
           })));
         }
       } catch {

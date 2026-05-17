@@ -36,6 +36,7 @@ Deno.serve(async (req) => {
       pricing_models (*),
       categories (name, slug),
       users!listings_freelancer_id_fkey (
+        full_name,
         business_name,
         avatar_url,
         summary,
