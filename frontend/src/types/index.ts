@@ -12,6 +12,7 @@ export interface Listing {
   tags: string[];
   color: string;
   completedJobs: number;
+  freelancerUserId?: string; // actual user id of the freelancer (for chat)
 }
 
 // ── Extended freelancer profile ──────────────────────────────────────────────

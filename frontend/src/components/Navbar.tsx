@@ -29,6 +29,12 @@ export const Navbar = ({ user }: NavbarProps) => {
           >
             Transactions
           </Link>
+          <Link
+            to="/messages"
+            className="hidden sm:block font-display uppercase text-sm tracking-widest hover:text-vibrant-coral transition-colors"
+          >
+            Messages
+          </Link>
           <div
             onClick={() => navigate(user.role === 'freelancer' ? '/dashboard' : '/profile')}
             className="flex items-center gap-3 cursor-pointer group"

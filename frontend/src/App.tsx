@@ -11,6 +11,7 @@ import { TransactionsPage } from './pages/TransactionsPage';
 import { HowItWorksPage } from './pages/HowItWorks';
 import { FindTalentPage } from './pages/FindTalent';
 import { PricingPage } from './pages/Pricing';
+import { ChatPage } from './pages/ChatPage';
 import { supabase } from './lib/supabaseClient';
 import { useInactivityLogout } from './hooks/useInactivityLogout';
 import { Spinner } from './components/Spinner';
@@ -127,6 +128,14 @@ export default function App() {
         <Route path="/how-it-works" element={<HowItWorksPage />} />
         <Route path="/find-talent" element={<FindTalentPage />} />
         <Route path="/pricing" element={<PricingPage />} />
+        <Route
+          path="/messages"
+          element={
+            authLoading ? <Spinner /> : user
+              ? <ChatPage user={user} />
+              : <Navigate to="/auth" />
+          }
+        />
         <Route path="*" element={<Navigate to="/" />} />
         <Route
           path="/transactions"
